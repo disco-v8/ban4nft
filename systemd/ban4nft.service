@@ -1,0 +1,15 @@
+[Unit]
+Description=Ban4nft Service
+Documentation=https://github.com/disco-v8/ban4nft
+After=network.target nftables.service
+
+[Service]
+Type=forking
+ExecStart=/usr/bin/ban4nftc start
+ExecStop=/usr/bin/ban4nftc stop
+ExecReload=/usr/bin/ban4nftc reload
+PIDFile=/run/ban4nftd.pid
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,8 @@
+/var/log/ban4nftd.log {
+    rotate 14
+    missingok
+    compress
+    postrotate
+      /usr/bin/ban4nftc reload > /dev/null
+    endscript
+}
