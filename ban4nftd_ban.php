@@ -109,7 +109,6 @@ function ban4nft_banmailsend($TARGET_CONF)
         // BAN4NFTチェインから対象IPアドレスについて削除する
         $MAIL_STR .= 'ban4nftc --unban --address '.$TARGET_CONF['target_address'].' --protcol '.$TARGET_CONF['target_protcol'].' --port '.$TARGET_CONF['target_port'].' --rule '.$TARGET_CONF['target_rule']."\n";
         $MAIL_STR .= "\n";
-        $MAIL_STR .= "or\n";
     }
     
     // 設定されている宛先にメール送信
