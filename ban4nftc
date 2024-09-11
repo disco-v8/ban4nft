@@ -1,0 +1,519 @@
+#!/usr/bin/php
+<?php
+// ------------------------------------------------------------
+// 
+// BAN for nftables
+// 
+// T.Kabu/MyDNS.JP           http://www.MyDNS.JP/
+// Future Versatile Group    http://www.fvg-on.net/
+// 
+// ------------------------------------------------------------
+?>
+<?php
+// ----------------------------------------------------------------------
+// Init Routine
+// ----------------------------------------------------------------------
+require(__DIR__."/ban4nftd_init.php");
+?>
+<?php
+// ----------------------------------------------------------------------
+// Sub Routine
+// ----------------------------------------------------------------------
+require(__DIR__."/ban4nftd_ban.php");
+?>
+<?php
+// ----------------------------------------------------------------------
+// Sub Routine
+// ----------------------------------------------------------------------
+require(__DIR__."/ban4nftd_unban.php");
+?>
+<?php
+// ----------------------------------------------------------------------
+// Sub Routine
+// ----------------------------------------------------------------------
+require(__DIR__."/ban4nftd_exec.php");
+?>
+<?php
+// ----------------------------------------------------------------------
+// Sub Routine
+// ----------------------------------------------------------------------
+function ban4nft_mail_send()
+{
+    // メール送信のパラメータを設定(それぞれのプロセスのTARGET_CONFがなかったり、宛先がなかったらFALSEで戻る。それ以外は空でも送信処理をする)
+    $MAIL_ARG = func_get_args();
+    // それぞれのプロセスのTARGET_CONFが設定されていなかったり、配列でなかったら
+    if (!isset($MAIL_ARG[0]) || !is_array($MAIL_ARG[0]))
+    {
+        // FALSEで戻る
+        return FALSE;
+    }
+    // パラメータがあるなら
+    else
+    {
+        // TARGET_CONFを設定
+        $TARGET_CONF = $MAIL_ARG[0];
+    }
+    
+    // 宛先に相当するパラメータが設定されていないなら
+    if (!isset($MAIL_ARG[1]))
+    {
+        // NULLを設定
+///        $MAIL_TO = NULL;
+        // FALSEで戻る
+        return FALSE;
+    }
+    // パラメータがあるなら
+    else
+    {
+        // 宛先を設定
+        $MAIL_TO = $MAIL_ARG[1];
+    }
+    
+    // タイトルに相当するパラメータが設定されていないなら
+    if (!isset($MAIL_ARG[2]))
+    {
+        // NULLを設定
+        $MAIL_TITLE = NULL;
+    }
+    // パラメータがあるなら
+    else
+    {
+        // タイトルを設定
+        $MAIL_TITLE = $MAIL_ARG[2];
+    }
+    
+    // 本文に相当するパラメータが設定されていないなら
+    if (!isset($MAIL_ARG[3]))
+    {
+        // NULLを設定
+        $MAIL_STR = NULL;
+    }
+    // パラメータがあるなら
+    else
+    {
+        // 本文を設定
+        $MAIL_STR = $MAIL_ARG[3];
+    }
+    
+    // ヘッダーオプションに相当するパラメータが設定されていないなら
+    if (!isset($MAIL_ARG[4]))
+    {
+        // NULLを設定
+        $MAIL_HEADER = NULL;
+    }
+    // パラメータがあるなら
+    else
+    {
+        // ヘッダーオプションを設定
+        $MAIL_HEADER = $MAIL_ARG[4];
+    }
+    
+    // メールオプションに相当するパラメータが設定されていないなら
+    if (!isset($MAIL_ARG[5]))
+    {
+        // NULLを設定
+        $MAIL_PARAM = NULL;
+    }
+    // パラメータがあるなら
+    else
+    {
+        // メールオプションを設定
+        $MAIL_PARAM = $MAIL_ARG[5];
+    }
+    
+    // メール送信レートテーブルから、対象メッセージの現在時刻 - 対象時間より昔のデータを削除
+    @$TARGET_CONF['mailrate_db']->exec("DELETE FROM mailrate_tbl WHERE registdate < (".(time() - $TARGET_CONF['mailratetime']).")");
+    // メール送信レートテーブルに対象メッセージを登録
+    $RESULT = @$TARGET_CONF['mailrate_db']->exec("INSERT INTO mailrate_tbl VALUES ('".$MAIL_TO."','".$MAIL_TITLE."',".time().")");
+    
+    // もし新しく登録できたら
+    if ($RESULT)
+    {
+        // メール送信
+        $RESULT = mb_send_mail(
+                $MAIL_TO,
+                $MAIL_TITLE,
+                $MAIL_STR,
+                $MAIL_HEADER,
+                $MAIL_PARAM);
+    }
+    else
+    {
+        // メールは送信しない
+    }
+    // 戻る
+    return $RESULT;
+}
+?>
+<?php
+// ----------------------------------------------------------------------
+// Sub Routine
+// ----------------------------------------------------------------------
+function ban4nft_optioncheck($BAN4NFTD_CONF, $BAN4NFTC_OPTIONS)
+{
+    // 現在日時を設定
+    $BAN4NFTD_CONF['logtime'] = local_time();
+    
+    // 必須パラメータ
+    // 対象IPアドレス(--address)が設定されているなら
+    if (isset($BAN4NFTC_OPTIONS['address']))
+    {
+        // IPアドレスをBAN対象として設定
+        $BAN4NFTD_CONF['target_address'] = $BAN4NFTC_OPTIONS['address'];
+        // IPアドレスがIPv4inIPv6フォーマットなら
+        if (preg_match("/^::ffff:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/", $BAN4NFTD_CONF['target_address']))
+        {
+//// print "IPアドレスがIPv4inIPv6フォーマットです\n";
+            // IPv4アドレスを設定
+            $BAN4NFTD_CONF['target_address'] = preg_replace("/^::ffff:/", '', $BAN4NFTD_CONF['target_address']);
+        }
+    }
+    // 対象IPアドレスが設定されていないなら
+    else
+    {
+        print "--address is not set!?"."\n";
+        // 終わり
+        exit -1;
+    }
+    // 対象IPアドレスを/で分割して配列に設定
+    $TARGET_ADDRESS = explode("/", $BAN4NFTD_CONF['target_address']);
+    // 対象IPアドレスがIPアドレスでないなら
+    if (filter_var($TARGET_ADDRESS[0], FILTER_VALIDATE_IP) === FALSE)
+    {
+        print $BAN4NFTD_CONF['target_address']." is not IP address!?"."\n";
+        // 終わり
+        exit -1;
+    }
+    
+    // BAN時間[s](--bantime)が設定されているなら
+    if (isset($BAN4NFTC_OPTIONS['bantime']))
+    {
+        // BAN時間[s]として設定
+        $BAN4NFTD_CONF['bantime'] = $BAN4NFTC_OPTIONS['bantime'];
+    }
+    // BAN時間[s](--bantime)が設定されていないなら、システムのデフォルト設定を使用
+    // BAN時間[s]が数字ではないなら(もっと厳密にチェックする？)
+    if (!is_numeric($BAN4NFTD_CONF['bantime']))
+    {
+        print $BAN4NFTD_CONF['bantime']." is not integer!?"."\n";
+        // 終わり
+        exit -1;
+    }
+    
+    
+    // 対象プロトコル(--protcol)が設定されているなら
+    if (isset($BAN4NFTC_OPTIONS['protcol']))
+    {
+        // 対象プロトコルをBAN対象として設定
+        $BAN4NFTD_CONF['target_protcol'] = $BAN4NFTC_OPTIONS['protcol'];
+        
+        // 対象プロトコルが文字列指定でないか、tcpでもudpでもallでもないなら
+        if (!is_string($BAN4NFTD_CONF['target_protcol']) || ($BAN4NFTD_CONF['target_protcol'] != 'tcp' && $BAN4NFTD_CONF['target_protcol'] != 'udp' && $BAN4NFTD_CONF['target_protcol'] != 'all'))
+        {
+            print $BAN4NFTD_CONF['target_protcol']." is not support protcol!?"."\n";
+            // 終わり
+            exit -1;
+        }
+    }
+    //対象プロトコルが設定されていないなら
+    else
+    {
+        // 全プロトコル(all)をBAN対象として設定
+        $BAN4NFTD_CONF['target_protcol'] = 'all';
+    }
+    
+    
+    // 対象ポート(--port)が設定されているなら
+    if (isset($BAN4NFTC_OPTIONS['port']))
+    {
+        // 対象ポートをBAN対象として設定
+        $BAN4NFTD_CONF['target_port'] = $BAN4NFTC_OPTIONS['port'];
+        
+        // 対象ポートが数字ではなく(＝文字列指定の)、ポート番号が引けないか、'all'でないなら
+        if (!is_numeric($BAN4NFTD_CONF['target_port']) && (getservbyname($BAN4NFTD_CONF['target_port'],'tcp') == FALSE && $BAN4NFTD_CONF['target_port'] != 'all'))
+        {
+            print $BAN4NFTD_CONF['target_port']." is not support port!?"."\n";
+            // 終わり
+            exit -1;
+        }
+    }
+    //対象ポートが設定されていないなら
+    else
+    {
+        // 全ポート(-1)をBAN対象として設定
+        $BAN4NFTD_CONF['target_port'] = 'all';
+    }
+    
+    
+    // 必須パラメータ
+    // 対象ルール(--rule)が設定されているなら
+    if (isset($BAN4NFTC_OPTIONS['rule']))
+    {
+        // 対象ルールをBAN対象として設定
+        $BAN4NFTD_CONF['target_rule'] = $BAN4NFTC_OPTIONS['rule'];
+    }
+    // 対象ルールが設定されていないなら
+    else
+    {
+        print "--rule is not set!?"."\n";
+        // 終わり
+        exit -1;
+    }
+    // 対象ルールが文字列指定だった場合、DROPでもREJECTでもLOGでもないなら
+    if (!is_string($BAN4NFTD_CONF['target_rule']) || ($BAN4NFTD_CONF['target_rule'] != 'DROP' && $BAN4NFTD_CONF['target_rule'] != 'REJECT' && $BAN4NFTD_CONF['target_rule'] != 'LOG'))
+    {
+        print $BAN4NFTD_CONF['target_rule']." is not rule!?"."\n";
+        // 終わり
+        exit -1;
+    }
+    
+    
+    // 対象サービス(--service)が設定されているなら
+    if (isset($BAN4NFTC_OPTIONS['service']))
+    {
+        // 対象サービスをBAN対象として設定
+        $BAN4NFTD_CONF['target_service'] = $BAN4NFTC_OPTIONS['service'];
+    }
+    // 対象サービスが設定されていないなら
+    else
+    {
+        // 対象サービスをBAN対象として設定
+        $BAN4NFTD_CONF['target_service'] = 'manual';
+    }
+    
+    // 対象プロトコルと対象ポートが片方だけallなら
+    if (
+        ($BAN4NFTD_CONF['target_protcol'] != 'all' && $BAN4NFTD_CONF['target_port'] == 'all') ||
+        ($BAN4NFTD_CONF['target_protcol'] == 'all' && $BAN4NFTD_CONF['target_port'] != 'all')
+        )
+    {
+        print "protcol(".$BAN4NFTD_CONF['target_protcol'].") and port(".$BAN4NFTD_CONF['target_port'].") mismatch!?"."\n";
+        // 終わり
+        exit -1;
+    }
+    
+    // --------------------------------
+    
+    // ホスト名の逆引きがONになっていたら
+    if ($BAN4NFTD_CONF['hostname_lookup'] == 1)
+    {
+        // 対象IPアドレスから対象ホスト名を取得して設定
+        $BAN4NFTD_CONF['target_hostname'] = gethostbyaddr($TARGET_ADDRESS[0]);
+    }
+    
+    // UNIXソケットを開く
+    $BAN4NFTD_CONF['socket'] = socket_create(AF_UNIX, SOCK_DGRAM, 0);
+    // UNIXソケットが開けなかったら
+    if ($BAN4NFTD_CONF['socket'] == FALSE )
+    {
+        // エラーメッセージに、UNIXソケットを開けない旨を設定
+        $ERR_MSG = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: WARN [".$BAN4NFTD_CONF['target_service']."] Cannot create socket!? (".$BAN4NFTD_CONF['conf_file'].")"."\n";
+        print $ERR_MSG;
+        // 終わり
+        exit -1;
+    }
+    // UNIXソケットをノンブロッキングモードに変更できなかったら
+    if (socket_set_nonblock($BAN4NFTD_CONF['socket']) == FALSE)
+    {
+        // エラーメッセージに、UNIXソケットをノンブロッキングモードに変更できない旨を設定
+        $ERR_MSG = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: WARN [".$BAN4NFTD_CONF['target_service']."] Cannot set nonblock socket!? (".$BAN4NFTD_CONF['conf_file'].")"."\n";
+        print $ERR_MSG;
+        // 終わり
+        exit -1;
+    }
+    // UNIXソケットの接続を確立できないなら
+    if (@socket_connect($BAN4NFTD_CONF['socket'], $BAN4NFTD_CONF['socket_file']) == FALSE)
+    {
+        print "Cannot connect socket!?"."\n";
+        // 終わり
+        exit -1;
+    }
+    // --------------------------------
+    
+    // 戻る
+    return $BAN4NFTD_CONF;
+}
+?>
+<?php
+// ----------------------------------------------------------------------
+// Sub Routine
+// ----------------------------------------------------------------------
+function ban4nft_manualunban($BAN4NFTD_CONF, $BAN4NFTC_OPTIONS)
+{
+    // オプションを検査
+    $BAN4NFTD_CONF = ban4nft_optioncheck($BAN4NFTD_CONF, $BAN4NFTC_OPTIONS);
+    // UNBANする
+    $BAN4NFTD_CONF = ban4nft_unban($BAN4NFTD_CONF);
+    // 親プロセスにログメッセージを送信
+    ban4nft_sendmsg($BAN4NFTD_CONF);
+}
+?>
+<?php
+// ----------------------------------------------------------------------
+// Sub Routine
+// ----------------------------------------------------------------------
+function ban4nft_manualban($BAN4NFTD_CONF, $BAN4NFTC_OPTIONS)
+{
+    
+    // オプションを検査
+    $BAN4NFTD_CONF = ban4nft_optioncheck($BAN4NFTD_CONF, $BAN4NFTC_OPTIONS);
+    // BANする
+    $BAN4NFTD_CONF = ban4nft_ban($BAN4NFTD_CONF);
+    // 親プロセスにログメッセージを送信
+    ban4nft_sendmsg($BAN4NFTD_CONF);
+}
+?>
+<?php
+// ----------------------------------------------------------------------
+// Sub Routine
+// ----------------------------------------------------------------------
+function ban4nft_banlist($BAN4NFTD_CONF)
+{
+    printf("%-39s %-16s %-10s %-6s %s",'IP Address','Service','Port','Rule','Until');
+    print "\n";
+    
+    // BANデータベース内の全データを取得
+    $RESULT = $BAN4NFTD_CONF['ban_db']->query("SELECT * FROM ban_tbl");
+    // データがあったら表示する
+    while ($DB_DATA = $RESULT->fetch(PDO::FETCH_ASSOC))
+    {
+        printf("%-39s %-16s %-10s %-6s %s",$DB_DATA['address'],$DB_DATA['service'],$DB_DATA['port'],$DB_DATA['rule'],date("Y/m/d H:i:s",$DB_DATA['unbandate']));
+        print "\n";
+    }
+}
+?>
+<?php
+// ----------------------------------------------------------------------
+// Main Routine
+// ----------------------------------------------------------------------
+// --------------------------------
+// コマンドラインオプションを解析(その一)
+// --------------------------------
+// 短いオプション(無し)
+$BAN4NFTC_SHORTOPT = "";
+
+// 長いオプション
+$BAN4NFTC_LONGOPT  = array(
+    "ban",                    // 値は要らない
+    "unban",                  // 値は要らない
+    "address:",               // 値が必須
+    "bantime:",               // 値が必須([s]、指定が無ければconfigのデフォルト値)
+    "port:",                  // 値が必須、指定が無ければall)
+    "protcol:",               // 値が必須、指定が無ければall
+    "rule:",                  // 値が必須
+    "service:",               // 値が必須(サービスの指定が無ければmanualというサービス名にする :-)
+);
+
+// コマンドラインオプションを解析
+$BAN4NFTC_OPTIONS = getopt($BAN4NFTC_SHORTOPT, $BAN4NFTC_LONGOPT);
+
+// 第一引数による処理分岐
+switch($argv[1])
+{
+    case "start" :
+        // ban4nftdを起動
+        exec(__DIR__.'/ban4nftd > /dev/null &');
+        print 'ban4nftd start ... Please check LOG file.'."\n";
+        // 終わり
+        exit;
+    case "stop" :
+        // ban4nftdプロセスをすべてkillする
+        exec('/usr/bin/killall ban4nftd');
+        // 少し待ってから
+        usleep(100000);
+        // PIDファイルがあれば
+        if (is_file($BAN4NFTD_CONF['pid_file']))
+        {
+            // PIDファイルを削除する
+            unlink($BAN4NFTD_CONF['pid_file']);
+        }
+        // ソケットファイルがあれば
+        if (is_executable($BAN4NFTD_CONF['socket_file']))
+        {
+            // ソケットファイルを削除する
+            unlink($BAN4NFTD_CONF['socket_file']);
+        }
+        print 'ban4nftd stop'."\n";
+        // 終わり
+        exit;
+    case "restart" :
+        // ban4nftdプロセスをすべてkillする
+        exec('/usr/bin/killall ban4nftd');
+        // 少し待ってから
+        usleep(100000);
+        // PIDファイルがあれば
+        if (is_file($BAN4NFTD_CONF['pid_file']))
+        {
+            // PIDファイルを削除する
+            unlink($BAN4NFTD_CONF['pid_file']);
+        }
+        // ソケットファイルがあれば
+        if (is_executable($BAN4NFTD_CONF['socket_file']))
+        {
+            // ソケットファイルを削除する
+            unlink($BAN4NFTD_CONF['socket_file']);
+        }
+        // ban4nftdを起動
+        exec(__DIR__.'/ban4nftd > /dev/null &');
+        print 'ban4nftd restart ... Please check LOG file.'."\n";
+        // 終わり
+        exit;
+    case "reload" :
+        // ban4nftdプロセスをすべてSIGHUPする
+        exec('/usr/bin/killall -s SIGHUP ban4nftd');
+        print 'ban4nftd reload ... Please check LOG file.'."\n";
+        // 終わり
+        exit;
+    case "list" :
+        // BANしているIPアドレスの一覧を出力
+        ban4nft_banlist($BAN4NFTD_CONF);
+        // 終わり
+        exit;
+}
+
+// もし --ban パラメータがついていたなら
+if (isset($BAN4NFTC_OPTIONS['ban']))
+{
+    // 手動でBANする
+    ban4nft_manualban($BAN4NFTD_CONF, $BAN4NFTC_OPTIONS);
+    // 終わり
+    exit;
+}
+// もし --unban パラメータがついていたなら
+if (isset($BAN4NFTC_OPTIONS['unban']))
+{
+    // 手動でUNBANする
+    ban4nft_manualunban($BAN4NFTD_CONF, $BAN4NFTC_OPTIONS);
+    // 終わり
+    exit;
+}
+
+// --------------------------------
+// 上記以外はヘルプメッセージを表示して終わり
+// --------------------------------
+print <<<EOF
+
+BAN for nftables controller (ban4nftc)
+
+Usage:
+
+   ban4nftc start    ... ban4nftd start.
+   ban4nftc stop     ... ban4nftd stop.
+   ban4nftc restart  ... ban4nftd stop and start.
+   ban4nftc reload   ... reload config file. (not unban existing settings).
+   ban4nftc list     ... output banned IPs list.
+
+   ban4nftc --ban --address <IP> --rule [DROP|REJECT|LOG] [--service <SERVICE>] (same as "--protcol all --port all")
+   ban4nftc --ban --address <IP> --protcol [tcp|udp|all] --port [0-65535|all] --rule [DROP|REJECT|LOG] [--service <SERVICE>]
+
+   ban4nftc --unban --address <IP> --rule [DROP|REJECT|LOG] [--service <SERVICE>] (same as "--protcol all --port all")
+   ban4nftc --unban --address <IP> --protcol [tcp|udp] --port [0-65535] --rule [DROP|REJECT|LOG] [--service <SERVICE>]
+       
+       <IP>         ... IPv4 or IPv6 address. (same LOGs format)
+       <SERVICE>    ... set "target_service" name to ban4nftd's log.
+
+T.Kabu/MyDNS.JP     https://www.mydns.jp/
+
+
+EOF;
+?>
