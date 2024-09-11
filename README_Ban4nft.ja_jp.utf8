@@ -28,10 +28,12 @@ Step0. インストールしてください(例. CentOS 10 Streamの場合)
 
 dnf -y install php php-devel php-pear php-mbstring php-pdo php-process php-pecl-inotify
 
-wget 'https://github.com/disco-v8/ban4nft/archive/master.zip' -O Ban4nft-master.zip
-unzip ./ban4nft-master.zip
+dnf -y install php php-devel php-pear php-mbstring php-pdo php-process php-pecl-inotify
 
-cd ./ban4nft-master/
+wget 'https://github.com/disco-v8/Ban4nft/archive/main.zip' -O ban4nft-main.zip
+unzip ./package/ban4nft-main.zip
+
+cd ./ban4nft-main/
 
 chmod 700 ./ban4nftd
 chmod 700 ./ban4nftc
@@ -49,12 +51,12 @@ cp ./ban4nftd_*.php /usr/bin/
 
 cp ./logrotate.d/ban4nft /etc/logrotate.d/
 
-cp ./systemd/ban4nft.service /usr/lib/systemd/system/
+/bin/cp ./systemd/ban4nft.service /usr/lib/systemd/system/
 systemctl daemon-reload
-systemctl status ban4nft
+systemctl --no-pager -l status ban4nft
 
 systemctl enable ban4nft
-systemctl status ban4nft
+systemctl --no-pager -l status ban4nft
 
 
 Step1. メインの設定ファイル「ban4nftd.conf」とサブ設定ファイル(/etc/ban4nft/*.conf)を設定しましょう
