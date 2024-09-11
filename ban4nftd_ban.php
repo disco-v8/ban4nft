@@ -91,25 +91,25 @@ function ban4nft_banmailsend($TARGET_CONF)
         $MAIL_STR .= "Rule    : ".$TARGET_CONF['target_rule']."\n";
         $MAIL_STR .= "Until   : ".date("Y/m/d H:i:s", $TARGET_CONF['logtime'] + $TARGET_CONF['bantime'])."\n";
         $MAIL_STR .= "\n";
+        // 対象サービスについてBANのプロトコルとポートがともに'all'なら
+        if ($TARGET_CONF['target_protcol'] == 'all' && $TARGET_CONF['target_port'] == 'all')
+        {
+            // BAN4NFTチェインに対象IPアドレスについて追加したのをそのままメールに添付
+            $MAIL_STR .= $TARGET_CONF['nft'].' add rule '.$IP_VER.' filter BAN4NFT '.$IP_VER.' saddr '.$TARGET_CONF['target_address'].' '.strtolower($TARGET_CONF['target_rule'])."\n";
+        }
+        // 対象サービスについてBANのプロトコルとポートが個別に設定されているなら
+        else if (isset($TARGET_CONF['target_protcol']) && isset($TARGET_CONF['target_port']))
+        {
+            // BAN4NFTチェインに対象IPアドレスについて追加したのをそのままメールに添付
+            $MAIL_STR .= $TARGET_CONF['nft'].' add rule '.$IP_VER.' filter '.$TARGET_CONF['nft_chain'].' '.$IP_VER.' saddr '.$TARGET_CONF['target_address'].' '.strtolower($TARGET_CONF['target_protcol']).' dport '.$TARGET_CONF['target_port'].' '.strtolower($TARGET_CONF['target_rule'])."\n";
+        }
+        $MAIL_STR .= "\n";
         $MAIL_STR .= "If you want to Unban by manual...\n";
         $MAIL_STR .= "\n";
         // BAN4NFTチェインから対象IPアドレスについて削除する
         $MAIL_STR .= 'ban4nftc --unban --address '.$TARGET_CONF['target_address'].' --protcol '.$TARGET_CONF['target_protcol'].' --port '.$TARGET_CONF['target_port'].' --rule '.$TARGET_CONF['target_rule']."\n";
         $MAIL_STR .= "\n";
         $MAIL_STR .= "or\n";
-        $MAIL_STR .= "\n";
-        // 対象サービスについてBANのプロトコルとポートがともに'all'なら
-        if ($TARGET_CONF['target_protcol'] == 'all' && $TARGET_CONF['target_port'] == 'all')
-        {
-            // BAN4NFTチェインに対象IPアドレスについて追加したのをそのままメールに添付
-            $MAIL_STR .= $TARGET_CONF['nft'].'add rule '.$IP_VER.' filter BAN4NFT '.$IP_VER.' saddr '.$TARGET_CONF['target_address'].' '.strtolower($TARGET_CONF['target_rule'])."\n";
-        }
-        // 対象サービスについてBANのプロトコルとポートが個別に設定されているなら
-        else if (isset($TARGET_CONF['target_protcol']) && isset($TARGET_CONF['target_port']))
-        {
-            // BAN4NFTチェインに対象IPアドレスについて追加したのをそのままメールに添付
-            $MAIL_STR .= $TARGET_CONF['nft'].'add rule '.$IP_VER.' filter '.$TARGET_CONF['nft_chain'].' '.$IP_VER.' saddr '.$TARGET_CONF['target_address'].' '.strtolower($TARGET_CONF['target_protcol']).' dport '.$TARGET_CONF['target_port'].' '.strtolower($TARGET_CONF['target_rule'])."\n";
-        }
     }
     
     // 設定されている宛先にメール送信
@@ -180,7 +180,7 @@ function ban4nft_ban($TARGET_CONF)
                     
                     $TARGET_CONF['log_msg'] .= 'until '.date("Y/m/d H:i:s", $TARGET_CONF['logtime'] + $TARGET_CONF['bantime'])."\n";
                     // BAN4NFTチェインに対象IPアドレスについて追加する
-                    system($TARGET_CONF['nft'].'add rule '.$IP_VER.' filter '.$TARGET_CONF['nft_chain'].' '.$IP_VER.' saddr '.$TARGET_CONF['target_address'].' '.strtolower($TARGET_CONF['target_rule']));
+                    system($TARGET_CONF['nft'].' add rule '.$IP_VER.' filter '.$TARGET_CONF['nft_chain'].' '.$IP_VER.' saddr '.$TARGET_CONF['target_address'].' '.strtolower($TARGET_CONF['target_rule']));
                     
                     // BANした旨をメールで通知
                     ban4nft_banmailsend($TARGET_CONF);
@@ -217,7 +217,7 @@ function ban4nft_ban($TARGET_CONF)
                 {
                     $TARGET_CONF['log_msg'] .= 'until '.date("Y/m/d H:i:s", $TARGET_CONF['logtime'] + $TARGET_CONF['bantime'])."\n";
                     // BAN4NFTチェインに対象IPアドレスについて追加する
-                    system($TARGET_CONF['nft'].'add rule '.$IP_VER.' filter '.$TARGET_CONF['nft_chain'].' '.$IP_VER.' saddr '.$TARGET_CONF['target_address'].' '.strtolower($TARGET_CONF['target_protcol']).' dport '.$TARGET_CONF['target_port'].' '.strtolower($TARGET_CONF['target_rule']));
+                    system($TARGET_CONF['nft'].' add rule '.$IP_VER.' filter '.$TARGET_CONF['nft_chain'].' '.$IP_VER.' saddr '.$TARGET_CONF['target_address'].' '.strtolower($TARGET_CONF['target_protcol']).' dport '.$TARGET_CONF['target_port'].' '.strtolower($TARGET_CONF['target_rule']));
                     
                     // BANした旨をメールで通知
                     ban4nft_banmailsend($TARGET_CONF);
