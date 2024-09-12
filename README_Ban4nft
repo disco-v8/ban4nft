@@ -112,7 +112,8 @@ Memo:
 
 "Inotify extension not loaded!?", but PECL inotify installed.
 
- -> pecl install Inotify
+ -> pecl search inotify
+ -> pecl install channel://pecl.php.net/inotify-3.0.0
  -> And, "extension=inotify.so" write in /etc/php.d/inotify.ini
 
 "PHP Fatal error:  Class 'SQLite3' not found in /root/ban4nft/ban4nftd.php on line 330"
