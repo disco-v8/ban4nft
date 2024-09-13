@@ -12,55 +12,6 @@
 ?>
 <?php
 // ----------------------------------------------------------------------
-// Init Routine
-// ----------------------------------------------------------------------
-// 環境変数などを設定する
-// 時刻オフセット初期化
-$TIME_OFFSET = 0;
-
-// Cannot find timezone
-if (ini_get('date.timezone') == FALSE)
-{
-    // Set system timezone to UTC
-    date_default_timezone_set(@date_default_timezone_get());
-    
-    // Get system time
-    exec("/bin/date +'%Y/%m/%d %H:%M:%S'", $EXEC_RESULT, $EXEC_RETVAL);
-    // Complete
-    if ($EXEC_RETVAL == 0)
-    {
-        // Get difference between the values of system time and PHP time
-        $TIME_OFFSET = strtotime($EXEC_RESULT[0]) - time();
-        
-        // Set offset time if it is more than 60sec
-        if ($TIME_OFFSET && ($TIME_OFFSET % 60) == 0)
-        {
-        }
-        else if ($TIME_OFFSET > 0)
-        {
-            // Set time offset in minutes
-            $TIME_OFFSET += (60 - ($TIME_OFFSET % 60));
-        }
-        else if ($TIME_OFFSET < 0)
-        {
-            // Set time offset in minutes
-            $TIME_OFFSET -= ($TIME_OFFSET % 60);
-        }
-    }
-}
-
-// 内部文字コード
-mb_internal_encoding('UTF-8');
-
-// 出力文字コード
-mb_http_output('UTF-8');
-
-// メイン設定ファイル名
-$BAN4NFTD_CONF['main_conf'] = '/etc/ban4nftd.conf';
-
-?>
-<?php
-// ----------------------------------------------------------------------
 // Sub Routine
 // ----------------------------------------------------------------------
 function local_time()
@@ -170,7 +121,7 @@ function ban4nft_dbreset()
 // ----------------------------------------------------------------------
 // Sub Routine
 // ----------------------------------------------------------------------
-function ban4nft_dbinit()
+function ban4nft_dbinit_sqlite3_count_db()
 {
     global $BAN4NFTD_CONF;
     
@@ -186,14 +137,6 @@ function ban4nft_dbinit()
         exit -1;
     }
     
-    // ----------------
-    // カウントデータベースのデータソース名(DSN)の指定がなければ、
-    // ----------------
-    if (empty($BAN4NFTD_CONF['pdo_dsn_count']))
-    {
-        // カウントデータベースに接続(無ければ新規に作成)
-        $BAN4NFTD_CONF['pdo_dsn_count'] = 'sqlite:' . $BAN4NFTD_CONF['db_dir'].'/count.db';
-    }
     // カウントデータベースがすでに接続されていたら
     if (isset($BAN4NFTD_CONF['count_db']) && $BAN4NFTD_CONF['count_db'] != null)
     {
@@ -235,14 +178,28 @@ function ban4nft_dbinit()
     // ログに出力する
 ///    log_write($BAN4NFTD_CONF);
     
-    // ----------------
-    // BANデータベースのデータソース名(DSN)の指定がなければ、
-    // ----------------
-    if (empty($BAN4NFTD_CONF['pdo_dsn_ban']))
+}
+?>
+<?php
+// ----------------------------------------------------------------------
+// Sub Routine
+// ----------------------------------------------------------------------
+function ban4nft_dbinit_sqlite3_ban_db()
+{
+    global $BAN4NFTD_CONF;
+    
+    // SQLite3データベース用のディレクトリを作成(エラー出力を抑制)
+    @mkdir($BAN4NFTD_CONF['db_dir']);
+    // SQLite3データベース用のディレクトリがないなら
+    if (!is_dir($BAN4NFTD_CONF['db_dir']))
     {
-        // BANデータベースに接続(無ければ新規に作成)
-        $BAN4NFTD_CONF['pdo_dsn_ban'] = 'sqlite:' . $BAN4NFTD_CONF['db_dir'].'/ban.db';
+        $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: ERROR ".$BAN4NFTD_CONF['db_dir']." not found!?"."\n";
+        // ログに出力する
+        log_write($BAN4NFTD_CONF);
+        // 終わり
+        exit -1;
     }
+    
     // BANデータベースがすでに接続されていたら
     if (isset($BAN4NFTD_CONF['ban_db']) && $BAN4NFTD_CONF['ban_db'] != null)
     {
@@ -284,14 +241,28 @@ function ban4nft_dbinit()
     // ログに出力する
 ///    log_write($BAN4NFTD_CONF);
     
-    // ----------------
-    // メール送信レートデータベースのデータソース名(DSN)の指定がなければ、
-    // ----------------
-    if (empty($BAN4NFTD_CONF['pdo_dsn_mailrate']))
+}
+?>
+<?php
+// ----------------------------------------------------------------------
+// Sub Routine
+// ----------------------------------------------------------------------
+function ban4nft_dbinit_sqlite3_mailrate_db()
+{
+    global $BAN4NFTD_CONF;
+    
+    // SQLite3データベース用のディレクトリを作成(エラー出力を抑制)
+    @mkdir($BAN4NFTD_CONF['db_dir']);
+    // SQLite3データベース用のディレクトリがないなら
+    if (!is_dir($BAN4NFTD_CONF['db_dir']))
     {
-        // メール送信レートテーブルデータベースに接続(無ければ新規に作成)
-        $BAN4NFTD_CONF['pdo_dsn_mailrate'] = 'sqlite:' . $BAN4NFTD_CONF['db_dir'].'/mailrate.db';
+        $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: ERROR ".$BAN4NFTD_CONF['db_dir']." not found!?"."\n";
+        // ログに出力する
+        log_write($BAN4NFTD_CONF);
+        // 終わり
+        exit -1;
     }
+    
     // メール送信レートテーブルデータベースがすでに接続されていたら
     if (isset($BAN4NFTD_CONF['mailrate_db']) && $BAN4NFTD_CONF['mailrate_db'] != null)
     {
@@ -334,6 +305,466 @@ function ban4nft_dbinit()
 ///    log_write($BAN4NFTD_CONF);
     
 }
+?>
+<?php
+// ----------------------------------------------------------------------
+// Sub Routine
+// ----------------------------------------------------------------------
+function ban4nft_dbinit_pgsql_count_db()
+{
+    global $BAN4NFTD_CONF;
+    
+    // カウントデータベースがすでに接続されていたら
+    if (isset($BAN4NFTD_CONF['count_db']) && $BAN4NFTD_CONF['count_db'] != null)
+    {
+        // いったん切断
+        $BAN4NFTD_CONF['count_db'] = null;
+        // 100msくらいのウェイトを置く
+        usleep(100000);
+    }
+    // カウントデータベースに接続を試す
+    try
+    {
+        $BAN4NFTD_CONF['count_db'] = new PDO($BAN4NFTD_CONF['pdo_dsn_count']);
+    }
+    // 接続できなかったら(失敗した場合、 PDOException を投げてくる)
+    catch(PDOException $e)
+    {
+        $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: ERROR ".$BAN4NFTD_CONF['pdo_dsn_count']." not Connection!? ".$e->getMessage()."\n";
+        // ログに出力する
+        log_write($BAN4NFTD_CONF);
+        // 終わり
+        exit -1;
+    }
+    
+    // テーブルがなかったら作成
+    $BAN4NFTD_CONF['count_db']->exec('CREATE TABLE IF NOT EXISTS count_tbl (address varchar(48), service varchar(128), registdate bigint)');
+    // インデックスを作成する
+    $BAN4NFTD_CONF['count_db']->exec('CREATE INDEX IF NOT EXISTS count_idx ON count_tbl (address)');
+    
+    // カウントデータベースの確認結果を出力
+///    $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: CHECK ".$BAN4NFTD_CONF['pdo_dsn_count'].", OK!"."\n";
+    // ログに出力する
+///    log_write($BAN4NFTD_CONF);
+    
+}
+?>
+<?php
+// ----------------------------------------------------------------------
+// Sub Routine
+// ----------------------------------------------------------------------
+function ban4nft_dbinit_pgsql_ban_db()
+{
+    global $BAN4NFTD_CONF;
+    
+    // BANデータベースがすでに接続されていたら
+    if (isset($BAN4NFTD_CONF['ban_db']) && $BAN4NFTD_CONF['ban_db'] != null)
+    {
+        // いったん切断
+        $BAN4NFTD_CONF['ban_db'] = null;
+        // 100msくらいのウェイトを置く
+        usleep(100000);
+    }
+    // BANデータベースに接続を試す
+    try
+    {
+        $BAN4NFTD_CONF['ban_db'] = new PDO($BAN4NFTD_CONF['pdo_dsn_ban']);
+    }
+    // 接続できなかったら(失敗した場合、 PDOException を投げてくる)
+    catch(PDOException $e)
+    {
+        $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: ERROR ".$BAN4NFTD_CONF['pdo_dsn_ban']." not Connection!? ".$e->getMessage()."\n";
+        // ログに出力する
+        log_write($BAN4NFTD_CONF);
+        // 終わり
+        exit -1;
+    }
+    
+    // テーブルがなかったら作成
+    $BAN4NFTD_CONF['ban_db']->exec('CREATE TABLE IF NOT EXISTS ban_tbl (address varchar(48), service varchar(128), protcol varchar(88), port varchar(8), rule varchar(8), unbandate bigint)');
+    // インデックスを作成する
+    $BAN4NFTD_CONF['ban_db']->exec('CREATE INDEX IF NOT EXISTS ban_idx ON ban_tbl (address)');
+    
+    // BANデータベースの確認結果を出力
+///    $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: CHECK ".$BAN4NFTD_CONF['pdo_dsn_ban'].", OK!"."\n";
+    // ログに出力する
+///    log_write($BAN4NFTD_CONF);
+    
+}
+?>
+<?php
+// ----------------------------------------------------------------------
+// Sub Routine
+// ----------------------------------------------------------------------
+function ban4nft_dbinit_pgsql_mailrate_db()
+{
+    global $BAN4NFTD_CONF;
+    
+    // メール送信レートテーブルデータベースがすでに接続されていたら
+    if (isset($BAN4NFTD_CONF['mailrate_db']) && $BAN4NFTD_CONF['mailrate_db'] != null)
+    {
+        // いったん切断
+        $BAN4NFTD_CONF['mailrate_db'] = null;
+        // 100msくらいのウェイトを置く
+        usleep(100000);
+    }
+    // メール送信レートテーブルデータベースに接続を試す
+    try
+    {
+        $BAN4NFTD_CONF['mailrate_db'] = new PDO($BAN4NFTD_CONF['pdo_dsn_mailrate']);
+    }
+    // 接続できなかったら(失敗した場合、 PDOException を投げてくる)
+    catch(PDOException $e)
+    {
+        $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: ERROR ".$BAN4NFTD_CONF['pdo_dsn_mailrate']." not Connection!? ".$e->getMessage()."\n";
+        // ログに出力する
+        log_write($BAN4NFTD_CONF);
+        // 終わり
+        exit -1;
+    }
+    
+    // テーブルがなかったら作成
+    $BAN4NFTD_CONF['mailrate_db']->exec('CREATE TABLE IF NOT EXISTS mailrate_tbl (to_address varchar(128), title varchar(128), registdate bigint, UNIQUE (to_address, title) )');
+    // インデックスを作成する
+    $BAN4NFTD_CONF['mailrate_db']->exec('CREATE INDEX IF NOT EXISTS mailrate_idx ON mailrate_tbl (to_address, title)');
+    
+    // メール送信レートテーブルデータベースの確認結果を出力
+///    $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: CHECK ".$BAN4NFTD_CONF['pdo_dsn_mailrate'].", OK!"."\n";
+    // ログに出力する
+///    log_write($BAN4NFTD_CONF);
+    
+}
+?>
+<?php
+// ----------------------------------------------------------------------
+// Sub Routine
+// ----------------------------------------------------------------------
+function ban4nft_dbinit_mysql_count_db()
+{
+    global $BAN4NFTD_CONF;
+    
+    // カウントデータベースがすでに接続されていたら
+    if (isset($BAN4NFTD_CONF['count_db']) && $BAN4NFTD_CONF['count_db'] != null)
+    {
+        // いったん切断
+        $BAN4NFTD_CONF['count_db'] = null;
+        // 100msくらいのウェイトを置く
+        usleep(100000);
+    }
+    // カウントデータベースに接続を試す
+    try
+    {
+        $BAN4NFTD_CONF['count_db'] = new PDO($BAN4NFTD_CONF['pdo_dsn_count'], $BAN4NFTD_CONF['pdo_dsn_username'], $BAN4NFTD_CONF['pdo_dsn_password']);
+    }
+    // 接続できなかったら(失敗した場合、 PDOException を投げてくる)
+    catch(PDOException $e)
+    {
+        $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: ERROR ".$BAN4NFTD_CONF['pdo_dsn_count']." not Connection!? ".$e->getMessage()."\n";
+        // ログに出力する
+        log_write($BAN4NFTD_CONF);
+        // 終わり
+        exit -1;
+    }
+    
+    // テーブルがなかったら作成
+    $BAN4NFTD_CONF['count_db']->exec('CREATE TABLE IF NOT EXISTS count_tbl (address varchar(48), service varchar(128), registdate bigint)');
+    // インデックスがあっても無くても作成する
+    try
+    {
+        $BAN4NFTD_CONF['count_db']->exec('ALTER TABLE count_tbl ADD INDEX count_idx (address)');
+    }
+    // 何からの理由でインデックスを作成できなかったら(失敗した場合、 PDOException を投げてくる)
+    catch(PDOException $e)
+    {
+        // …が、特に気にしない(性能は落ちるかもしれないけど)
+    }
+    
+    // カウントデータベースの確認結果を出力
+///    $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: CHECK ".$BAN4NFTD_CONF['pdo_dsn_count'].", OK!"."\n";
+    // ログに出力する
+///    log_write($BAN4NFTD_CONF);
+    
+}
+?>
+<?php
+// ----------------------------------------------------------------------
+// Sub Routine
+// ----------------------------------------------------------------------
+function ban4nft_dbinit_mysql_ban_db()
+{
+    global $BAN4NFTD_CONF;
+    
+    // BANデータベースがすでに接続されていたら
+    if (isset($BAN4NFTD_CONF['ban_db']) && $BAN4NFTD_CONF['ban_db'] != null)
+    {
+        // いったん切断
+        $BAN4NFTD_CONF['ban_db'] = null;
+        // 100msくらいのウェイトを置く
+        usleep(100000);
+    }
+    // BANデータベースに接続を試す
+    try
+    {
+        $BAN4NFTD_CONF['ban_db'] = new PDO($BAN4NFTD_CONF['pdo_dsn_ban'], $BAN4NFTD_CONF['pdo_dsn_username'], $BAN4NFTD_CONF['pdo_dsn_password']);
+    }
+    // 接続できなかったら(失敗した場合、 PDOException を投げてくる)
+    catch(PDOException $e)
+    {
+        $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: ERROR ".$BAN4NFTD_CONF['pdo_dsn_ban']." not Connection!? ".$e->getMessage()."\n";
+        // ログに出力する
+        log_write($BAN4NFTD_CONF);
+        // 終わり
+        exit -1;
+    }
+    
+    // テーブルがなかったら作成
+    $BAN4NFTD_CONF['ban_db']->exec('CREATE TABLE IF NOT EXISTS ban_tbl (address varchar(48), service varchar(128), protcol varchar(88), port varchar(8), rule varchar(8), unbandate bigint)');
+    // インデックスがあっても無くても作成する
+    try
+    {
+        $BAN4NFTD_CONF['ban_db']->exec('ALTER TABLE ban_tbl ADD INDEX ban_idx (address)');
+    }
+    // 何からの理由でインデックスを作成できなかったら(失敗した場合、 PDOException を投げてくる)
+    catch(PDOException $e)
+    {
+        // …が、特に気にしない(性能は落ちるかもしれないけど)
+    }
+    
+    // BANデータベースの確認結果を出力
+///    $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: CHECK ".$BAN4NFTD_CONF['pdo_dsn_ban'].", OK!"."\n";
+    // ログに出力する
+///    log_write($BAN4NFTD_CONF);
+    
+}
+?>
+<?php
+// ----------------------------------------------------------------------
+// Sub Routine
+// ----------------------------------------------------------------------
+function ban4nft_dbinit_mysql_mailrate_db()
+{
+    global $BAN4NFTD_CONF;
+    
+    // メール送信レートテーブルデータベースがすでに接続されていたら
+    if (isset($BAN4NFTD_CONF['mailrate_db']) && $BAN4NFTD_CONF['mailrate_db'] != null)
+    {
+        // いったん切断
+        $BAN4NFTD_CONF['mailrate_db'] = null;
+        // 100msくらいのウェイトを置く
+        usleep(100000);
+    }
+    // メール送信レートテーブルデータベースに接続を試す
+    try
+    {
+        $BAN4NFTD_CONF['mailrate_db'] = new PDO($BAN4NFTD_CONF['pdo_dsn_mailrate'], $BAN4NFTD_CONF['pdo_dsn_username'], $BAN4NFTD_CONF['pdo_dsn_password']);
+    }
+    // 接続できなかったら(失敗した場合、 PDOException を投げてくる)
+    catch(PDOException $e)
+    {
+        $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: ERROR ".$BAN4NFTD_CONF['pdo_dsn_mailrate']." not Connection!? ".$e->getMessage()."\n";
+        // ログに出力する
+        log_write($BAN4NFTD_CONF);
+        // 終わり
+        exit -1;
+    }
+    
+    // テーブルがなかったら作成
+    $BAN4NFTD_CONF['mailrate_db']->exec('CREATE TABLE IF NOT EXISTS mailrate_tbl (to_address varchar(128), title varchar(128), registdate bigint, UNIQUE (to_address, title) )');
+    // インデックスがあっても無くても作成する
+    try
+    {
+        $BAN4NFTD_CONF['mailrate_db']->exec('ALTER TABLE mailrate_tbl ADD INDEX mailrate_idx (to_address, title)');
+    }
+    // 何からの理由でインデックスを作成できなかったら(失敗した場合、 PDOException を投げてくる)
+    catch(PDOException $e)
+    {
+        // …が、特に気にしない(性能は落ちるかもしれないけど)
+    }
+    
+    // メール送信レートテーブルデータベースの確認結果を出力
+///    $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: CHECK ".$BAN4NFTD_CONF['pdo_dsn_mailrate'].", OK!"."\n";
+    // ログに出力する
+///    log_write($BAN4NFTD_CONF);
+    
+}
+?>
+<?php
+// ----------------------------------------------------------------------
+// Sub Routine
+// ----------------------------------------------------------------------
+function ban4nft_dbinit()
+{
+    global $BAN4NFTD_CONF;
+    
+    // ----------------
+    // カウントデータベースのデータソース名(DSN)の指定がなければ、
+    // ----------------
+    if (empty($BAN4NFTD_CONF['pdo_dsn_count']))
+    {
+        // カウントデータベースに接続(無ければ新規に作成)
+        $BAN4NFTD_CONF['pdo_dsn_count'] = 'sqlite:' . $BAN4NFTD_CONF['db_dir'].'/count.db';
+    }
+    
+    // ----------------
+    // BANデータベースのデータソース名(DSN)の指定がなければ、
+    // ----------------
+    if (empty($BAN4NFTD_CONF['pdo_dsn_ban']))
+    {
+        // BANデータベースに接続(無ければ新規に作成)
+        $BAN4NFTD_CONF['pdo_dsn_ban'] = 'sqlite:' . $BAN4NFTD_CONF['db_dir'].'/ban.db';
+    }
+    
+    // ----------------
+    // メール送信レートデータベースのデータソース名(DSN)の指定がなければ、
+    // ----------------
+    if (empty($BAN4NFTD_CONF['pdo_dsn_mailrate']))
+    {
+        // メール送信レートテーブルデータベースに接続(無ければ新規に作成)
+        $BAN4NFTD_CONF['pdo_dsn_mailrate'] = 'sqlite:' . $BAN4NFTD_CONF['db_dir'].'/mailrate.db';
+    }
+    
+    // ----------------
+    // カウントデータベースのデータソース名(DSN)の指定により初期化処理分岐
+    // ----------------
+    // カウントデータベースのデータソース名(DSN)の指定が「pgsql」なら
+    if (isset($BAN4NFTD_CONF['pdo_dsn_count']) && preg_match('/^pgsql/', $BAN4NFTD_CONF['pdo_dsn_count']))
+    {
+        // カウントデータベースの初期化処理
+        ban4nft_dbinit_pgsql_count_db();
+    }
+    // カウントデータベースのデータソース名(DSN)の指定が「mysql」なら
+    else if (isset($BAN4NFTD_CONF['pdo_dsn_count']) && isset($BAN4NFTD_CONF['pdo_dsn_username']) && isset($BAN4NFTD_CONF['pdo_dsn_password']) && preg_match('/^mysql/', $BAN4NFTD_CONF['pdo_dsn_count']))
+    {
+        // カウントデータベースの初期化処理
+        ban4nft_dbinit_mysql_count_db();
+    }
+    // カウントデータベースのデータソース名(DSN)の指定が「sqlite」なら
+    else if (isset($BAN4NFTD_CONF['pdo_dsn_count']) && preg_match('/^sqlite/', $BAN4NFTD_CONF['pdo_dsn_count']))
+    {
+        // カウントデータベースの初期化処理
+        ban4nft_dbinit_sqlite3_count_db();
+    }
+    // カウントデータベースのデータソース名(DSN)の指定が上記以外なら
+    else
+    {
+        $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: ERROR ".$BAN4NFTD_CONF['pdo_dsn_count'].", not supported!? ".$e->getMessage()."\n";
+        // ログに出力する
+        log_write($BAN4NFTD_CONF);
+        // 終わり
+        exit -1;
+    }
+    
+    // ----------------
+    // BANデータベースのデータソース名(DSN)の指定により初期化処理分岐
+    // ----------------
+    // BANデータベースのデータソース名(DSN)の指定が「pgsql」なら
+    if (isset($BAN4NFTD_CONF['pdo_dsn_ban']) && preg_match('/^pgsql/', $BAN4NFTD_CONF['pdo_dsn_ban']))
+    {
+        // BANデータベースの初期化処理
+        ban4nft_dbinit_pgsql_ban_db();
+    }
+    // BANデータベースのデータソース名(DSN)の指定が「mysql」なら
+    else if (isset($BAN4NFTD_CONF['pdo_dsn_ban']) && isset($BAN4NFTD_CONF['pdo_dsn_username']) && isset($BAN4NFTD_CONF['pdo_dsn_password']) && preg_match('/^mysql/', $BAN4NFTD_CONF['pdo_dsn_ban']))
+    {
+        // BANデータベースの初期化処理
+        ban4nft_dbinit_mysql_ban_db();
+    }
+    // BANデータベースのデータソース名(DSN)の指定が「sqlite」なら
+    else if (isset($BAN4NFTD_CONF['pdo_dsn_ban']) && preg_match('/^sqlite/', $BAN4NFTD_CONF['pdo_dsn_ban']))
+    {
+        // BANデータベースの初期化処理
+        ban4nft_dbinit_sqlite3_ban_db();
+    }
+    // BANデータベースのデータソース名(DSN)の指定が上記以外なら
+    else
+    {
+        $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: ERROR ".$BAN4NFTD_CONF['pdo_dsn_ban'].", not supported!? ".$e->getMessage()."\n";
+        // ログに出力する
+        log_write($BAN4NFTD_CONF);
+        // 終わり
+        exit -1;
+    }
+    
+    // ----------------
+    // メール送信レートデータベースのデータソース名(DSN)の指定により初期化処理分岐
+    // ----------------
+    // メール送信レートデータベースのデータソース名(DSN)の指定が「pgsql」なら
+    if (isset($BAN4NFTD_CONF['pdo_dsn_mailrate']) && preg_match('/^pgsql/', $BAN4NFTD_CONF['pdo_dsn_mailrate']))
+    {
+        // メール送信レートデータベースの初期化処理
+        ban4nft_dbinit_pgsql_mailrate_db();
+    }
+    // メール送信レートデータベースのデータソース名(DSN)の指定が「mysql」なら
+    else if (isset($BAN4NFTD_CONF['pdo_dsn_mailrate']) && isset($BAN4NFTD_CONF['pdo_dsn_username']) && isset($BAN4NFTD_CONF['pdo_dsn_password']) && preg_match('/^mysql/', $BAN4NFTD_CONF['pdo_dsn_mailrate']))
+    {
+        // メール送信レートデータベースの初期化処理
+        ban4nft_dbinit_mysql_mailrate_db();
+    }
+    // メール送信レートデータベースのデータソース名(DSN)の指定が「sqlite」なら
+    else if (isset($BAN4NFTD_CONF['pdo_dsn_mailrate']) && preg_match('/^sqlite/', $BAN4NFTD_CONF['pdo_dsn_mailrate']))
+    {
+        // メール送信レートデータベースの初期化処理
+        ban4nft_dbinit_sqlite3_mailrate_db();
+    }
+    // メール送信レートデータベースのデータソース名(DSN)の指定が上記以外なら
+    else
+    {
+        $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: ERROR ".$BAN4NFTD_CONF['pdo_dsn_mailrate'].", not supported!? ".$e->getMessage()."\n";
+        // ログに出力する
+        log_write($BAN4NFTD_CONF);
+        // 終わり
+        exit -1;
+    }
+}
+?>
+<?php
+// ----------------------------------------------------------------------
+// Init Routine
+// ----------------------------------------------------------------------
+// 環境変数などを設定する
+// 時刻オフセット初期化
+$TIME_OFFSET = 0;
+
+// Cannot find timezone
+if (ini_get('date.timezone') == FALSE)
+{
+    // Set system timezone to UTC
+    date_default_timezone_set(@date_default_timezone_get());
+    
+    // Get system time
+    exec("/bin/date +'%Y/%m/%d %H:%M:%S'", $EXEC_RESULT, $EXEC_RETVAL);
+    // Complete
+    if ($EXEC_RETVAL == 0)
+    {
+        // Get difference between the values of system time and PHP time
+        $TIME_OFFSET = strtotime($EXEC_RESULT[0]) - time();
+        
+        // Set offset time if it is more than 60sec
+        if ($TIME_OFFSET && ($TIME_OFFSET % 60) == 0)
+        {
+        }
+        else if ($TIME_OFFSET > 0)
+        {
+            // Set time offset in minutes
+            $TIME_OFFSET += (60 - ($TIME_OFFSET % 60));
+        }
+        else if ($TIME_OFFSET < 0)
+        {
+            // Set time offset in minutes
+            $TIME_OFFSET -= ($TIME_OFFSET % 60);
+        }
+    }
+}
+
+// 内部文字コード
+mb_internal_encoding('UTF-8');
+
+// 出力文字コード
+mb_http_output('UTF-8');
+
+// メイン設定ファイル名
+$BAN4NFTD_CONF['main_conf'] = '/etc/ban4nftd.conf';
+
 ?>
 <?php
 // ----------------------------------------------------------------------
@@ -406,13 +837,6 @@ if ($BAN4NFTD_CONF === FALSE)
     // 終わり
     exit -1;
 }
-?>
-<?php
-// ----------------------------------------------------------------------
-// Init ban4nft DB
-// ----------------------------------------------------------------------
-// データベースの初期化(接続や必要に応じてテーブル生成)を行う
-ban4nft_dbinit();
 ?>
 <?php
 // ----------------------------------------------------------------------

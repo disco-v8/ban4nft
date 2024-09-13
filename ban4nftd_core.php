@@ -111,18 +111,33 @@ function ban4nft_mail_send()
     }
     
     // メール送信レートテーブルから、対象メッセージの現在時刻 - 対象時間より昔のデータを削除
-    @$TARGET_CONF['mailrate_db']->exec("DELETE FROM mailrate_tbl WHERE registdate < (".(time() - $TARGET_CONF['mailratetime']).")");
+    $SQL_STR = "DELETE FROM mailrate_tbl WHERE registdate < (".(time() - $TARGET_CONF['mailratetime']).");";
+    try {
+        $RESULT = $TARGET_CONF['mailrate_db']->exec($SQL_STR);
+    }
+    catch (PDOException $PDO_E) {
+        // エラーの旨メッセージを設定
+        $TARGET_CONF['log_msg'] .= date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: WARN PDOException:".$PDO_E->getMessage()." on ".__FILE__.":".__LINE__."\n";
+    }
     // メール送信レートテーブルに対象メッセージを登録
-    $RESULT = @$TARGET_CONF['mailrate_db']->exec("INSERT INTO mailrate_tbl VALUES ('".$MAIL_TO."','".$MAIL_TITLE."',".time().")");
+    $SQL_STR = "INSERT INTO mailrate_tbl VALUES ('".$MAIL_TO."','".$MAIL_TITLE."',".time().");";
+    try {
+        $RESULT = $TARGET_CONF['mailrate_db']->exec($SQL_STR);
+    }
+    catch (PDOException $PDO_E) {
+        // エラーの旨メッセージを設定
+        $TARGET_CONF['log_msg'] .= date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: WARN PDOException:".$PDO_E->getMessage()." on ".__FILE__.":".__LINE__."\n";
+        $RESULT = 0;
+    }
     
     // もし新しく登録できたら
-    if ($RESULT)
+    if ($RESULT != 0)
     {
         // メール送信
         $RESULT = mb_send_mail(
                 $MAIL_TO,
                 $MAIL_TITLE,
-                $MAIL_STR,
+                $MAIL_STR.$RESULT,
                 $MAIL_HEADER,
                 $MAIL_PARAM);
     }
@@ -302,7 +317,7 @@ system($BAN4NFTD_CONF['nft'].' add chain ip6 filter '.$BAN4NFTD_CONF['nft_chain'
 ?>
 <?php
 // ----------------------------------------------------------------------
-// Main
+// Main (ここで監視設定(.conf)毎にプロセスを再度フォークする)
 // ----------------------------------------------------------------------
 do // SIGHUPに対応したループ構造にしている
 {
@@ -454,7 +469,8 @@ do // SIGHUPに対応したループ構造にしている
             // 2021.09.07 T.Kabu どうもSQLite3が、DELETEの時にだけ何かのタイミングでデータベースがロックしているという判断でエラーとなる。実際にはDELETE出来ているので再試行も発生しないので、try/catchでスルーするようにした
             try {
                 // カウントデータベースから最大カウント時間を過ぎたデータをすべて削除(いわゆる削除漏れのゴミ掃除)
-                $BAN4NFTD_CONF['count_db']->exec("DELETE FROM count_tbl WHERE registdate < ".$BAN4NFTD_CONF['maxfindtime']);
+                $SQL_STR = "DELETE FROM count_tbl WHERE registdate < ".$BAN4NFTD_CONF['maxfindtime'].";";
+                $BAN4NFTD_CONF['count_db']->exec($SQL_STR);
             }
             catch (PDOException $PDO_E) {
                 // エラーの旨メッセージを設定
@@ -462,9 +478,10 @@ do // SIGHUPに対応したループ構造にしている
                 // ログに出力する
                 log_write($BAN4NFTD_CONF);
             }
-
+            
             // BANデータベースでBAN解除対象IPアドレスを取得
-            $RESULT = $BAN4NFTD_CONF['ban_db']->query("SELECT * FROM ban_tbl WHERE unbandate < ".local_time());
+            $SQL_STR = "SELECT * FROM ban_tbl WHERE unbandate < ".local_time().";";
+            $RESULT = $BAN4NFTD_CONF['ban_db']->query($SQL_STR);
             // BAN解除対象IPアドレスの取得ができなかったら
             if ($RESULT === FALSE)
             {
@@ -488,9 +505,14 @@ do // SIGHUPに対応したループ構造にしている
                     // ログに出力する
                     log_write($BAN4NFTD_CONF);
                 }
-                // WAL内のデータをDBに書き出し(こうしないとban4nftc listで確認したり、別プロセスでsqlite3ですぐに確認できない…が、負荷的にはWALにしている意味がないよなぁ…一応banの場合は発行時に、unbanはここですべてが終わった時に書き出し処理をする。count_dbはしない)
-///                $BAN4NFTD_CONF['count_db']->exec("PRAGMA wal_checkpoint");
-                $BAN4NFTD_CONF['ban_db']->exec("PRAGMA wal_checkpoint");
+                if (isset($TARGET_CONF['pdo_dsn_ban']) && preg_match('/^sqlite/', $TARGET_CONF['pdo_dsn_ban']))
+                {
+                    // WAL内のデータをDBに書き出し(こうしないとban4nftc listで確認したり、別プロセスでsqlite3ですぐに確認できない…が、負荷的にはWALにしている意味がないよなぁ…一応banの場合は発行時に、unbanはここですべてが終わった時に書き出し処理をする。count_dbはしない)
+////                    $SQL_STR = "PRAGMA wal_checkpoint;";
+////                    $BAN4NFTD_CONF['count_db']->exec($SQL_STR);
+                    $SQL_STR = "PRAGMA wal_checkpoint;";
+                    $BAN4NFTD_CONF['ban_db']->exec($SQL_STR);
+                }
             }
         }
         
