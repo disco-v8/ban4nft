@@ -137,7 +137,7 @@ function ban4nft_mail_send()
         $RESULT = mb_send_mail(
                 $MAIL_TO,
                 $MAIL_TITLE,
-                $MAIL_STR.$RESULT,
+                $MAIL_STR,
                 $MAIL_HEADER,
                 $MAIL_PARAM);
     }
