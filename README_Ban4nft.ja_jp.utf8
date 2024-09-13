@@ -16,7 +16,7 @@
     php-devel
     php-pear
     php-mbstring
-    php-pdo (SQLite3)
+    php-pdo (SQLite3/PostgreSQL/MySQL)
     php-process
     php-inotify
     procps
@@ -25,8 +25,6 @@
 使い方:
 
 Step0. インストールしてください(例. CentOS 10 Streamの場合)
-
-dnf -y install php php-devel php-pear php-mbstring php-pdo php-process php-pecl-inotify
 
 dnf -y install php php-devel php-pear php-mbstring php-pdo php-process php-pecl-inotify
 
@@ -150,6 +148,22 @@ db_timeoutの値を伸ばしてみるといいかも。(デフォルトは500ms�
 "Failed to obtain an inotify instance!?"
 
 申し訳ありませんが、監視対象ログが多すぎるので減らしてください。(つまり、.confを減らす)
+
+5) PostgreSQL/MySQLを使う場合
+
+任意のユーザー名(例:ban4nft)とパスワードで
+
+count_db
+ban_db
+mailrate_db
+
+の三つのデータベースを作成してください。(テーブルは自動的に作られます)
+
+あとは、ban4nftd.confの「pdo_dsn_???」を、必要に応じて書き直して設定を有効にしてください。
+
+"Ban4nft"を導入したいサーバーが複数ある場合には、count_dbを共有することで、ロックアウト対応が素早くできます。
+
+ban_dbとmailrate_dbは、サーバー毎に扱わないといけないので、共有しないでください。
 
 
 ＃以下日本語だけの技術メモ

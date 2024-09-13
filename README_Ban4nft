@@ -18,7 +18,7 @@ Need Package:
     php-devel
     php-pear
     php-mbstring
-    php-pdo (SQLite3)
+    php-pdo (SQLite3/PostgreSQL/MySQL)
     php-process
     php-inotify
     procps
@@ -132,6 +132,20 @@ Memo:
 "Failed to obtain an inotify instance!?"
 
  -> Sorry, You should reduce config file. (= target log).
+
+"When using PostgreSQL/MySQL..."
+
+  count_db
+  ban_db
+  mailrate_db
+
+Create the above three databases. (The tables will be created automatically.)
+Then rewrite “pdo_dsn_???” in ban4nftd.conf as needed to enable the setting.
+If you have multiple servers on which you want to install “Ban4nft,” you can 
+share count_db so that all servers can share fail count information,
+which will allow you to quickly respond to lockouts.
+
+Do not share ban_db and mailrate_db, as they must be handled on a per-server basis.
 
 
 License:
