@@ -6,15 +6,7 @@
 // T.Kabu/MyDNS.JP           http://www.MyDNS.JP/
 // Future Versatile Group    http://www.fvg-on.net/
 // 
-// ver.1 ... Standalone type lockout service.
-// ver.2 ... Information Sharing lockout service.
 // ------------------------------------------------------------
-?>
-<?php
-// ----------------------------------------------------------------------
-// Sub Routine
-// ----------------------------------------------------------------------
-require(__DIR__."/ban4nftd_ban.php");
 ?>
 <?php
 // ----------------------------------------------------------------------
@@ -303,8 +295,9 @@ function ban4nft_loop($TARGET_CONF)
                             // 対象文字列がキーワード指定なら
                             if (isset($TARGET_CONF['target_type']) && strpos($TARGET_CONF['target_type'], "KEY") !== FALSE)
                             {
-                                    // 現在日時を設定
-                                    $TARGET_CONF['logtime'] = local_time();
+                                    // 現在日時(UNIXタイム)を設定
+////                                    $TARGET_CONF['logtime'] = local_time();
+                                    $TARGET_CONF['logtime'] = time();
                                     // 対象文字列を対象IPアドレスに設定
                                     $TARGET_CONF['target_keyword'] = $TARGET_MATCH[1];
                                     
@@ -327,7 +320,8 @@ function ban4nft_loop($TARGET_CONF)
                                     // 2021.09.07 T.Kabu どうもSQLite3が、DELETEの時にだけ何かのタイミングでデータベースがロックしているという判断でエラーとなる。実際にはDELETE出来ているので再試行も発生しないので、try/catchでスルーするようにした
                                     try {
                                         // カウントデータベースから該当サービスの現在時刻 - 対象時間より昔のカウントデータを削除
-                                        $TARGET_CONF['count_db']->exec("DELETE FROM count_tbl WHERE service = '".$TARGET_CONF['target_service']."' AND registdate < (".(local_time() - $TARGET_CONF['findtime']).")");
+////                                        $TARGET_CONF['count_db']->exec("DELETE FROM count_tbl WHERE service = '".$TARGET_CONF['target_service']."' AND registdate < (".(local_time() - $TARGET_CONF['findtime']).")");
+                                        $TARGET_CONF['count_db']->exec("DELETE FROM count_tbl WHERE service = '".$TARGET_CONF['target_service']."' AND registdate < (".(time() - $TARGET_CONF['findtime']).")");
                                     }
                                     catch (PDOException $PDO_E) {
                                         // エラーの旨メッセージを設定
@@ -371,8 +365,8 @@ function ban4nft_loop($TARGET_CONF)
                                             $TARGET_CONF['log_msg'] = date("Y-m-d H:i:s", $TARGET_CONF['logtime'])." ban4nft[".getmypid()."]: WARN [".$TARGET_CONF['target_service']."] Cannot Query the DB, ".$TARGET_CONF['target_address']." ... DB File DELETE & REBOOT!(1)"."\n";
                                             // 親プロセスに送信
                                             ban4nft_sendmsg($TARGET_CONF);
-                                            // データベースファイルをリセット
-                                            ban4nft_dbreset();
+                                            // SQLite3のデータベースファイルをリセット
+                                            ban4nft_dbreset_sqlite3();
                                         }
                                     }
                                     // 検出回数未満なら
@@ -389,14 +383,14 @@ function ban4nft_loop($TARGET_CONF)
                                 // 対象文字列がIPアドレスなら
                                 if (filter_var($TARGET_MATCH[1], FILTER_VALIDATE_IP) !== FALSE)
                                 {
-                                    // 現在日時を設定
-                                    $TARGET_CONF['logtime'] = local_time();
+                                    // 現在日時(UNIXタイム)を設定
+////                                    $TARGET_CONF['logtime'] = local_time();
+                                    $TARGET_CONF['logtime'] = time();
                                     // 対象文字列を対象IPアドレスに設定
                                     $TARGET_CONF['target_address'] = $TARGET_MATCH[1];
                                     // IPアドレスがIPv4inIPv6フォーマットなら
                                     if (preg_match("/^::ffff:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/", $TARGET_CONF['target_address']))
                                     {
-///                                        print "IPアドレスがIPv4inIPv6フォーマットです\n";
                                         // IPv4アドレスを設定
                                         $TARGET_CONF['target_address'] = preg_replace("/^::ffff:/", '', $TARGET_CONF['target_address']);
                                     }
@@ -454,8 +448,9 @@ function ban4nft_loop($TARGET_CONF)
 
                                     // 2021.09.07 T.Kabu どうもSQLite3が、DELETEの時にだけ何かのタイミングでデータベースがロックしているという判断でエラーとなる。実際にはDELETE出来ているので再試行も発生しないので、try/catchでスルーするようにした
                                     try {
-                                        // カウントデータベースから該当サービスの現在時刻 - 対象時間より昔のカウントデータを削除
-                                        $TARGET_CONF['count_db']->exec("DELETE FROM count_tbl WHERE service = '".$TARGET_CONF['target_service']."' AND registdate < (".(local_time() - $TARGET_CONF['findtime']).")");
+                                        // カウントデータベースから該当サービスの現在時刻(UNIXタイム) - 対象時間より昔のカウントデータを削除
+////                                        $TARGET_CONF['count_db']->exec("DELETE FROM count_tbl WHERE service = '".$TARGET_CONF['target_service']."' AND registdate < (".(local_time() - $TARGET_CONF['findtime']).")");
+                                        $TARGET_CONF['count_db']->exec("DELETE FROM count_tbl WHERE service = '".$TARGET_CONF['target_service']."' AND registdate < (".(time() - $TARGET_CONF['findtime']).")");
                                     }
                                     catch (PDOException $PDO_E) {
                                         // エラーの旨メッセージを設定
@@ -479,7 +474,7 @@ function ban4nft_loop($TARGET_CONF)
                                     // 対象IPアドレスの検出回数を初期化
                                     $RESULT_COUNT = 0;
                                     // 結果が取得できているなら
-
+                                    
                                     // カウントデータベースで対象IPアドレスが対象時間内に何個存在するか取得
                                     $RESULT = $TARGET_CONF['count_db']->query("SELECT COUNT(address) AS addr_count FROM count_tbl WHERE address = '".$TARGET_CONF['target_address']."' AND service = '".$TARGET_CONF['target_service']."' AND registdate > (".($TARGET_CONF['logtime'] - $TARGET_CONF['findtime']).")");
                                     
@@ -513,8 +508,8 @@ function ban4nft_loop($TARGET_CONF)
                                             $TARGET_CONF['log_msg'] = date("Y-m-d H:i:s", $TARGET_CONF['logtime'])." ban4nft[".getmypid()."]: WARN [".$TARGET_CONF['target_service']."] Cannot Query the DB, ".$TARGET_CONF['target_address']." ... DB File DELETE & REBOOT!(2)"."\n";
                                             // 親プロセスに送信
                                             ban4nft_sendmsg($TARGET_CONF);
-                                            // データベースファイルをリセット
-                                            ban4nft_dbreset();
+                                            // SQLite3のデータベースファイルをリセット
+                                            ban4nft_dbreset_sqlite3();
                                         }
                                     }
                                     // 検出回数未満なら
@@ -572,7 +567,7 @@ function ban4nft_init($TARGET_CONF)
         // 対象プロトコルが文字列指定でないか、tcpでもudpでもallでもないなら
         if (!is_string($TARGET_CONF['target_protcol']) || ($TARGET_CONF['target_protcol'] != 'tcp' && $TARGET_CONF['target_protcol'] != 'udp' && $TARGET_CONF['target_protcol'] != 'all'))
         {
-            // エラーメッセージに、BAN時間[s]の設定がない旨を設定
+            // エラーメッセージに、対象プロトコルの設定がない旨を設定
             $TARGET_CONF['log_msg'] .= "ERROR [".$TARGET_CONF['target_service']."] ".$TARGET_CONF['target_protcol']." is not support protcol!? (".$TARGET_CONF['conf_file'].")"."\n";
             // パラメータを戻す
             return $TARGET_CONF;
@@ -592,7 +587,7 @@ function ban4nft_init($TARGET_CONF)
         // 対象ポートが数字ではなく(＝文字列指定の)、ポート番号が引けないか、'all'でないなら
         if (!is_numeric($TARGET_CONF['target_port']) && (getservbyname($TARGET_CONF['target_port'],'tcp') == FALSE && $TARGET_CONF['target_port'] != 'all'))
         {
-            // エラーメッセージに、BAN時間[s]の設定がない旨を設定
+            // エラーメッセージに、対象ポートが数字ではなく(＝文字列指定の)、ポート番号が引けないか、'all'でない旨を設定
             $TARGET_CONF['log_msg'] .= "ERROR [".$TARGET_CONF['target_service']."] ".$TARGET_CONF['target_protcol']." is not support port!? (".$TARGET_CONF['conf_file'].")"."\n";
              // パラメータを戻す
             return $TARGET_CONF;
@@ -610,7 +605,7 @@ function ban4nft_init($TARGET_CONF)
     // 対象ルール(--rule)が設定されていないなら
     if (!isset($TARGET_CONF['target_rule']))
     {
-        // エラーメッセージに、BAN時間[s]の設定がない旨を設定
+        // エラーメッセージに、対象ルールの設定がない旨を設定
         $TARGET_CONF['log_msg'] .= "ERROR [".$TARGET_CONF['target_service']."] Rule is not set!? (".$TARGET_CONF['conf_file'].")"."\n";
         // パラメータを戻す
         return $TARGET_CONF;
@@ -629,7 +624,7 @@ function ban4nft_init($TARGET_CONF)
     // 対象サービス(--service)が設定されていないなら
     if (!isset($TARGET_CONF['target_service']))
     {
-        // エラーメッセージに、BAN時間[s]の設定がない旨を設定
+        // エラーメッセージに、対象サービスの設定がない旨を設定
         $TARGET_CONF['log_msg'] .= "ERROR [".$TARGET_CONF['target_service']."] target_service is not set!? (".$TARGET_CONF['conf_file'].")"."\n";
         // パラメータを戻す
         return $TARGET_CONF;
@@ -641,7 +636,7 @@ function ban4nft_init($TARGET_CONF)
         ($TARGET_CONF['target_protcol'] == 'all' && $TARGET_CONF['target_port'] != 'all')
         )
     {
-        // エラーメッセージに、BAN時間[s]の設定がない旨を設定
+        // エラーメッセージに、対象プロトコルと対象ポートの設定が合わない旨を設定
         $TARGET_CONF['log_msg'] .= "ERROR [".$TARGET_CONF['target_service']."] protcol(".$TARGET_CONF['target_protcol'].") and port(".$TARGET_CONF['target_port'].") mismatch!? (".$TARGET_CONF['conf_file'].")"."\n";
         // パラメータを戻す
         return $TARGET_CONF;
@@ -762,7 +757,6 @@ function ban4nft_start($TARGET_CONF)
             // 設定されている宛先にメール送信
             foreach($TARGET_CONF['mail_to'] as $MAIL_TO)
             {
-///                $RESULT = mb_send_mail(
                 $RESULT = ban4nft_mail_send(
                 $TARGET_CONF,
                 $MAIL_TO,

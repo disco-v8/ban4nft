@@ -7,6 +7,8 @@
 // T.Kabu/MyDNS.JP           http://www.MyDNS.JP/
 // Future Versatile Group    http://www.fvg-on.net/
 // 
+// ver.1 ... Standalone type lockout service.
+// ver.2 ... Support PostgreSQL & MyQSL, and Information Sharing lockout service.
 // ------------------------------------------------------------
 ?>
 <?php
@@ -57,8 +59,6 @@ function ban4nft_mail_send()
     // 宛先に相当するパラメータが設定されていないなら
     if (!isset($MAIL_ARG[1]))
     {
-        // NULLを設定
-///        $MAIL_TO = NULL;
         // FALSEで戻る
         return FALSE;
     }
@@ -151,8 +151,9 @@ function ban4nft_mail_send()
 // ----------------------------------------------------------------------
 function ban4nft_optioncheck($BAN4NFTD_CONF, $BAN4NFTC_OPTIONS)
 {
-    // 現在日時を設定
-    $BAN4NFTD_CONF['logtime'] = local_time();
+    // 現在日時(UNIXタイム)を設定
+////    $BAN4NFTD_CONF['logtime'] = local_time();
+    $BAN4NFTD_CONF['logtime'] = time();
     
     // 必須パラメータ
     // 対象IPアドレス(--address)が設定されているなら
@@ -163,7 +164,6 @@ function ban4nft_optioncheck($BAN4NFTD_CONF, $BAN4NFTC_OPTIONS)
         // IPアドレスがIPv4inIPv6フォーマットなら
         if (preg_match("/^::ffff:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/", $BAN4NFTD_CONF['target_address']))
         {
-//// print "IPアドレスがIPv4inIPv6フォーマットです\n";
             // IPv4アドレスを設定
             $BAN4NFTD_CONF['target_address'] = preg_replace("/^::ffff:/", '', $BAN4NFTD_CONF['target_address']);
         }

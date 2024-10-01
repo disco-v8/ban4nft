@@ -6,8 +6,6 @@
 // T.Kabu/MyDNS.JP           http://www.MyDNS.JP/
 // Future Versatile Group    http://www.fvg-on.net/
 // 
-// ver.1 ... Standalone type lockout service.
-// ver.2 ... Information Sharing lockout service.
 // ------------------------------------------------------------
 ?>
 <?php
@@ -101,14 +99,17 @@ function log_write($BAN4NFTD_CONF)
 // ----------------------------------------------------------------------
 // Sub Routine
 // ----------------------------------------------------------------------
-function ban4nft_dbreset()
+function ban4nft_dbreset_sqlite3()
 {
     global $BAN4NFTD_CONF;
     
-    // カウント用データベースファイルを削除
+    // SQLite3のデータベースファイルを削除
     @unlink($BAN4NFTD_CONF['db_dir'].'/ban.db');
     @unlink($BAN4NFTD_CONF['db_dir'].'/count.db');
     @unlink($BAN4NFTD_CONF['db_dir'].'/mailrate.db');
+    $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: SQLite3's DB File deleted."."\n";
+    // ログに出力する
+    log_write($BAN4NFTD_CONF);
     
     $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: ban4nft will be RESTART!"."\n";
     // ログに出力する
@@ -173,11 +174,6 @@ function ban4nft_dbinit_sqlite3_count_db()
     // カウントデータベースのロックタイムアウト時間を少し長くする
     $BAN4NFTD_CONF['count_db']->exec('PRAGMA busy_timeout='.$BAN4NFTD_CONF['db_timeout']);
     
-    // カウントデータベースの確認結果を出力
-///    $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: CHECK ".$BAN4NFTD_CONF['pdo_dsn_count'].", OK!"."\n";
-    // ログに出力する
-///    log_write($BAN4NFTD_CONF);
-    
 }
 ?>
 <?php
@@ -235,11 +231,6 @@ function ban4nft_dbinit_sqlite3_ban_db()
     
     // BANデータベースのロックタイムアウト時間を少し長くする
     $BAN4NFTD_CONF['ban_db']->exec('PRAGMA busy_timeout='.$BAN4NFTD_CONF['db_timeout']);
-    
-    // BANデータベースの確認結果を出力
-///    $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: CHECK ".$BAN4NFTD_CONF['pdo_dsn_ban'].", OK!"."\n";
-    // ログに出力する
-///    log_write($BAN4NFTD_CONF);
     
 }
 ?>
@@ -299,11 +290,6 @@ function ban4nft_dbinit_sqlite3_mailrate_db()
     // メール送信レートテーブルデータベースのロックタイムアウト時間を少し長くする
     $BAN4NFTD_CONF['mailrate_db']->exec('PRAGMA busy_timeout='.$BAN4NFTD_CONF['db_timeout']);
     
-    // メール送信レートテーブルデータベースの確認結果を出力
-///    $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: CHECK ".$BAN4NFTD_CONF['pdo_dsn_mailrate'].", OK!"."\n";
-    // ログに出力する
-///    log_write($BAN4NFTD_CONF);
-    
 }
 ?>
 <?php
@@ -341,11 +327,6 @@ function ban4nft_dbinit_pgsql_count_db()
     $BAN4NFTD_CONF['count_db']->exec('CREATE TABLE IF NOT EXISTS count_tbl (address varchar(48), service varchar(128), registdate bigint)');
     // インデックスを作成する
     $BAN4NFTD_CONF['count_db']->exec('CREATE INDEX IF NOT EXISTS count_idx ON count_tbl (address)');
-    
-    // カウントデータベースの確認結果を出力
-///    $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: CHECK ".$BAN4NFTD_CONF['pdo_dsn_count'].", OK!"."\n";
-    // ログに出力する
-///    log_write($BAN4NFTD_CONF);
     
 }
 ?>
@@ -385,11 +366,6 @@ function ban4nft_dbinit_pgsql_ban_db()
     // インデックスを作成する
     $BAN4NFTD_CONF['ban_db']->exec('CREATE INDEX IF NOT EXISTS ban_idx ON ban_tbl (address)');
     
-    // BANデータベースの確認結果を出力
-///    $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: CHECK ".$BAN4NFTD_CONF['pdo_dsn_ban'].", OK!"."\n";
-    // ログに出力する
-///    log_write($BAN4NFTD_CONF);
-    
 }
 ?>
 <?php
@@ -427,11 +403,6 @@ function ban4nft_dbinit_pgsql_mailrate_db()
     $BAN4NFTD_CONF['mailrate_db']->exec('CREATE TABLE IF NOT EXISTS mailrate_tbl (to_address varchar(128), title varchar(128), registdate bigint, UNIQUE (to_address, title) )');
     // インデックスを作成する
     $BAN4NFTD_CONF['mailrate_db']->exec('CREATE INDEX IF NOT EXISTS mailrate_idx ON mailrate_tbl (to_address, title)');
-    
-    // メール送信レートテーブルデータベースの確認結果を出力
-///    $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: CHECK ".$BAN4NFTD_CONF['pdo_dsn_mailrate'].", OK!"."\n";
-    // ログに出力する
-///    log_write($BAN4NFTD_CONF);
     
 }
 ?>
@@ -479,11 +450,6 @@ function ban4nft_dbinit_mysql_count_db()
         // …が、特に気にしない(性能は落ちるかもしれないけど)
     }
     
-    // カウントデータベースの確認結果を出力
-///    $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: CHECK ".$BAN4NFTD_CONF['pdo_dsn_count'].", OK!"."\n";
-    // ログに出力する
-///    log_write($BAN4NFTD_CONF);
-    
 }
 ?>
 <?php
@@ -530,11 +496,6 @@ function ban4nft_dbinit_mysql_ban_db()
         // …が、特に気にしない(性能は落ちるかもしれないけど)
     }
     
-    // BANデータベースの確認結果を出力
-///    $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: CHECK ".$BAN4NFTD_CONF['pdo_dsn_ban'].", OK!"."\n";
-    // ログに出力する
-///    log_write($BAN4NFTD_CONF);
-    
 }
 ?>
 <?php
@@ -580,11 +541,6 @@ function ban4nft_dbinit_mysql_mailrate_db()
     {
         // …が、特に気にしない(性能は落ちるかもしれないけど)
     }
-    
-    // メール送信レートテーブルデータベースの確認結果を出力
-///    $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: CHECK ".$BAN4NFTD_CONF['pdo_dsn_mailrate'].", OK!"."\n";
-    // ログに出力する
-///    log_write($BAN4NFTD_CONF);
     
 }
 ?>
@@ -714,6 +670,64 @@ function ban4nft_dbinit()
         log_write($BAN4NFTD_CONF);
         // 終わり
         exit -1;
+    }
+    
+    // ----------------
+    // 情報共有サーバー関連のパにより初期化処理分岐
+    // ----------------
+    // 情報共有フラグがON(=1)なら
+    if (isset($BAN4NFTD_CONF['iss_flag']) && $BAN4NFTD_CONF['iss_flag'] == 1)
+    {
+        // 情報共有サーバー名が設定されていないなら
+        if (!isset($BAN4NFTD_CONF['iss_server']))
+        {
+            $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: ERROR iss_server is not set!?"."\n";
+            // ログに出力する
+            log_write($BAN4NFTD_CONF);
+            // 終わり
+            exit -1;
+        }
+        // 情報共有サーバーへ接続するユーザー名が設定されていないなら
+        if (!isset($BAN4NFTD_CONF['iss_username']))
+        {
+            $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: ERROR iss_username is not set!?"."\n";
+            // ログに出力する
+            log_write($BAN4NFTD_CONF);
+            // 終わり
+            exit -1;
+        }
+        // 情報共有サーバーへ接続するユーザー名のパスワードが設定されていないなら
+        if (!isset($BAN4NFTD_CONF['iss_password']))
+        {
+            $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: ERROR iss_password is not set!?"."\n";
+            // ログに出力する
+            log_write($BAN4NFTD_CONF);
+            // 終わり
+            exit -1;
+        }
+        
+        // 情報共有サーバーにユーザー名とパスワードでアクセスができないなら
+        // →ここで確認しなくても、情報共有サーバーにはban4nftd_core.phpでBAN情報をもらいに行くので、要らないのでは？
+        //   そのときにBAN情報を貰えなかったとしても、まぁ気にしないで何度でもトライすればいいような？
+        
+        // BAN情報取得秒数(現在時刻よりiss_get_time[秒]前までのデータを取得する)がおかしい場合には
+        if (!isset($BAN4NFTD_CONF['iss_get_time']) || !is_numeric($BAN4NFTD_CONF['iss_get_time']))
+        {
+            $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: ERROR iss_get_time(".$BAN4NFTD_CONF['iss_get_time'].")"."\n";
+            // ログに出力する
+            log_write($BAN4NFTD_CONF);
+            // 終わり
+            exit -1;
+        }
+        // BAN情報取得数(最大iss_get_limit[個]のデータを取得する)がおかしい場合には
+        if (!isset($BAN4NFTD_CONF['iss_get_limit']) || !is_numeric($BAN4NFTD_CONF['iss_get_limit']))
+        {
+            $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: ERROR iss_get_limit(".$BAN4NFTD_CONF['iss_get_limit'].")"."\n";
+            // ログに出力する
+            log_write($BAN4NFTD_CONF);
+            // 終わり
+            exit -1;
+        }
     }
 }
 ?>

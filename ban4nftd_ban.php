@@ -15,7 +15,6 @@
 function ban4nft_sendmsg($TARGET_CONF)
 {
     $FROM_SOCKET = '';
-///    $SEND_MSG = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: ".$TARGET_CONF['log_msg'];
     $SEND_MSG = $TARGET_CONF['log_msg'];
     
     // UNIXソケットが開いていなかったら ※PHP8からはソケットをSocket型としたので、開いているはずのソケットをis_resource()で検査するとfalseとなるため、バージョンにより判定分離
@@ -114,7 +113,6 @@ function ban4nft_banmailsend($TARGET_CONF)
     // 設定されている宛先にメール送信
     foreach($TARGET_CONF['mail_to'] as $MAIL_TO)
     {
-///        $RESULT = mb_send_mail(
         $RESULT = ban4nft_mail_send(
             $TARGET_CONF,
             $MAIL_TO,
@@ -134,6 +132,21 @@ function ban4nft_ban($TARGET_CONF)
 {
     // 対象IPアドレスを/で分割して配列に設定
     $TARGET_ADDRESS = explode("/", $TARGET_CONF['target_address']);
+    // -----------------------------
+    // 情報共有フラグがON(=1)なら、かつ情報共有サーバーからのデータなら
+    // -----------------------------
+    if (isset($TARGET_CONF['iss_flag']) && $TARGET_CONF['iss_flag'] == 1 && $TARGET_CONF['target_service'] == 'iss-list')
+    {
+        // メッセージを設定
+        $TARGET_CONF['log_msg'] = date("Y-m-d H:i:s", $TARGET_CONF['logtime'])." ban4nft[".getmypid()."]: NOTICE [".$TARGET_CONF['target_service']."] Ban ".$TARGET_CONF['target_address']." (This is ISS BAN Data) ";
+    }
+    // 通常の監視によるBANなら
+    else
+    {
+        // メッセージを設定
+        $TARGET_CONF['log_msg'] = date("Y-m-d H:i:s", $TARGET_CONF['logtime'])." ban4nft[".getmypid()."]: NOTICE [".$TARGET_CONF['target_service']."] Ban ".$TARGET_CONF['target_address']." (over ".$TARGET_CONF['maxretry']." counts) ";
+    }
+    
     // 対象IPアドレスがIPv6なら(IPv6だったら文字列そのものが返ってくる)
     if (filter_var($TARGET_ADDRESS[0], FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== FALSE)
     {
@@ -148,12 +161,10 @@ function ban4nft_ban($TARGET_CONF)
     else if (!isset($TARGET_CONF['target_type']) || strpos($TARGET_CONF['target_type'], "KEY") === FALSE)
     {
         // 対象IPアドレスはBANの対象だけど、アドレスがおかしい旨のメッセージを設定
-        $TARGET_CONF['log_msg'] = date("Y-m-d H:i:s", $TARGET_CONF['logtime'])." ban4nft[".getmypid()."]: NOTICE [".$TARGET_CONF['target_service']."] Ban ".$TARGET_CONF['target_address']." (over ".$TARGET_CONF['maxretry']." counts) ";
         $TARGET_CONF['log_msg'] .= 'Illegal address!?'."\n";
         // 戻る
         return $TARGET_CONF;
     }
-    $TARGET_CONF['log_msg'] = date("Y-m-d H:i:s", $TARGET_CONF['logtime'])." ban4nft[".getmypid()."]: NOTICE [".$TARGET_CONF['target_service']."] Ban ".$TARGET_CONF['target_address']." (over ".$TARGET_CONF['maxretry']." counts) ";
     
     // 対象サービスについてBANのルール設定があるなら
     if (isset($TARGET_CONF['target_rule']))
@@ -177,16 +188,22 @@ function ban4nft_ban($TARGET_CONF)
                 if (psearch($PROC_P, $TARGET_PATTERN) == FALSE)
                 {
                     
-                    $TARGET_CONF['log_msg'] .= 'until '.date("Y/m/d H:i:s", $TARGET_CONF['logtime'] + $TARGET_CONF['bantime'])."\n";
+                    $TARGET_CONF['log_msg'] .= 'until '.date("Y/m/d H:i:s", $TARGET_CONF['logtime'] + $TARGET_CONF['bantime']);
                     // BAN4NFTチェインに対象IPアドレスについて追加する
                     system($TARGET_CONF['nft'].' add rule '.$IP_VER.' filter '.$TARGET_CONF['nft_chain'].' '.$IP_VER.' saddr '.$TARGET_CONF['target_address'].' '.strtolower($TARGET_CONF['target_rule']));
                     
-                    // BANした旨をメールで通知
-                    ban4nft_banmailsend($TARGET_CONF);
+                    // -----------------------------
+                    // 情報共有フラグがON(=1)なら、かつ情報共有サーバーからのデータでなければ
+                    // -----------------------------
+                    if (isset($TARGET_CONF['iss_flag']) && $TARGET_CONF['iss_flag'] == 1 && $TARGET_CONF['target_service'] != 'iss-list')
+                    {
+                        // BANした旨をメールで通知
+                        ban4nft_banmailsend($TARGET_CONF);
+                    }
                 }
                 else
                 {
-                    $TARGET_CONF['log_msg'] .= 'changed '.date("Y/m/d H:i:s", $TARGET_CONF['logtime'] + $TARGET_CONF['bantime'])."\n";
+                    $TARGET_CONF['log_msg'] .= 'changed '.date("Y/m/d H:i:s", $TARGET_CONF['logtime'] + $TARGET_CONF['bantime']);
                 }
                 pclose($PROC_P);
                 // -----------------------------
@@ -218,16 +235,22 @@ function ban4nft_ban($TARGET_CONF)
                 // BAN4NFTチェインに対象IPアドレスがないなら
                 if (psearch($PROC_P, $TARGET_PATTERN) == FALSE)
                 {
-                    $TARGET_CONF['log_msg'] .= 'until '.date("Y/m/d H:i:s", $TARGET_CONF['logtime'] + $TARGET_CONF['bantime'])."\n";
+                    $TARGET_CONF['log_msg'] .= 'until '.date("Y/m/d H:i:s", $TARGET_CONF['logtime'] + $TARGET_CONF['bantime']);
                     // BAN4NFTチェインに対象IPアドレスについて追加する
                     system($TARGET_CONF['nft'].' add rule '.$IP_VER.' filter '.$TARGET_CONF['nft_chain'].' '.$IP_VER.' saddr '.$TARGET_CONF['target_address'].' '.strtolower($TARGET_CONF['target_protcol']).' dport '.$TARGET_CONF['target_port'].' '.strtolower($TARGET_CONF['target_rule']));
                     
-                    // BANした旨をメールで通知
-                    ban4nft_banmailsend($TARGET_CONF);
+                    // -----------------------------
+                    // 情報共有フラグがON(=1)なら、かつ情報共有サーバーからのデータでなければ
+                    // -----------------------------
+                    if (isset($TARGET_CONF['iss_flag']) && $TARGET_CONF['iss_flag'] == 1 && $TARGET_CONF['target_service'] != 'iss-list')
+                    {
+                        // BANした旨をメールで通知
+                        ban4nft_banmailsend($TARGET_CONF);
+                    }
                 }
                 else
                 {
-                    $TARGET_CONF['log_msg'] .= 'changed '.date("Y/m/d H:i:s", $TARGET_CONF['logtime'] + $TARGET_CONF['bantime'])."\n";
+                    $TARGET_CONF['log_msg'] .= 'changed '.date("Y/m/d H:i:s", $TARGET_CONF['logtime'] + $TARGET_CONF['bantime']);
                 }
                 pclose($PROC_P);
                 // -----------------------------
@@ -250,13 +273,62 @@ function ban4nft_ban($TARGET_CONF)
             // ないなら(対象IPアドレスがBANの対象である旨のみ出力)
             else
             {
-                $TARGET_CONF['log_msg'] .= 'not BAN??'."\n";
+                $TARGET_CONF['log_msg'] .= 'not BAN??';
             }
         }
         
-        // BANした後のコマンド(exec_afer_ban)が設定されていたら実行(iptablesで設定する市内にかかわらず実行するように変更)
+        // BANした後のコマンド(exec_afer_ban)が設定されていたら実行(nftで設定するしないにかかわらず実行するように変更)
         $TARGET_CONF = ban4nft_exec($TARGET_CONF, 'exec_after_ban');
+        
+        // -----------------------------
+        // 情報共有フラグがON(=1)なら、かつ情報共有サーバーからのデータでなければ
+        // -----------------------------
+        if (isset($TARGET_CONF['iss_flag']) && $TARGET_CONF['iss_flag'] == 1 && $TARGET_CONF['target_service'] != 'iss-list')
+        {
+            // 情報共有サーバーのBANデータベースに、BAN情報をアップ
+            $ISS_INFO = array(
+                "target_address" => $TARGET_CONF['target_address'],
+                "target_protcol" => $TARGET_CONF['target_protcol'],
+                "target_port" => $TARGET_CONF['target_port'],
+                "target_rule" => $TARGET_CONF['target_rule'],
+                "target_service" => $TARGET_CONF['target_service'],
+                "registdate" => time()
+                );
+                
+            // JSON形式に変換
+            $ISS_JSON = json_encode($ISS_INFO);
+            
+            // ストリームコンテキストのオプションを作成
+            $ISS_OPTION = array(
+                // HTTPコンテキストオプションをセット
+                'http' => array(
+                'method'=> 'POST',
+                'header'=> 'Content-type: application/json; charset=UTF-8', //JSON形式を指定
+                'content' => $ISS_JSON
+                )
+            );
+            
+            // ストリームコンテキストの作成
+            $ISS_CONTEXT = stream_context_create($ISS_OPTION);
+            
+            // POST送信
+            $ISS_RESULT = @file_get_contents('https://'.$TARGET_CONF['iss_username'].':'.$TARGET_CONF['iss_password'].'@'.$TARGET_CONF['iss_server'].'/banput.html', false, $ISS_CONTEXT);
+            
+            // POST出来なかったら
+            if ($ISS_RESULT === false)
+            {
+                // 特に何もしない？
+                $TARGET_CONF['log_msg'] .= ' ISS PUT NG!? ';
+            }
+            // POST出来たら
+            else
+            {
+                // 特に何もしない？
+                $TARGET_CONF['log_msg'] .= ' ISS PUT OK!!';
+            }
+        }
     }
+    $TARGET_CONF['log_msg'] .= "\n";
     // 戻る
     return $TARGET_CONF;
 }

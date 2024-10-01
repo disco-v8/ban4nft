@@ -8,7 +8,7 @@
 // Future Versatile Group    http://www.fvg-on.net/
 // 
 // ver.1 ... Standalone type lockout service.
-// ver.2 ... Information Sharing lockout service.
+// ver.2 ... Support PostgreSQL & MyQSL, and Information Sharing lockout service.
 // ------------------------------------------------------------
 ?>
 <?php
