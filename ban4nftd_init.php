@@ -673,7 +673,7 @@ function ban4nft_dbinit()
     }
     
     // ----------------
-    // 情報共有サーバー関連のパにより初期化処理分岐
+    // 情報共有サーバー関連の初期化処理
     // ----------------
     // 情報共有フラグがON(=1)なら
     if (isset($BAN4NFTD_CONF['iss_flag']) && $BAN4NFTD_CONF['iss_flag'] == 1)
