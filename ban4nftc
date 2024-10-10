@@ -184,6 +184,8 @@ function ban4nft_optioncheck($BAN4NFTD_CONF, $BAN4NFTC_OPTIONS)
         // 終わり
         exit -1;
     }
+    // 対象の本来のアドレスを設定(ISS対応により、実際のBAN処理にはtarget_originaladdressを渡すようにしたため。2024.10.10)
+    $TARGET_CONF['target_originaladdress'] = $TARGET_CONF['target_address'];
     
     // BAN時間[s](--bantime)が設定されているなら
     if (isset($BAN4NFTC_OPTIONS['bantime']))

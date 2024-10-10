@@ -650,6 +650,9 @@ function ban4nft_end($signo)
 ?>
 <?php
 // ----------------------------------------------------------------------
+// Main Core Routine
+// ----------------------------------------------------------------------
+// ----------------------------------------------------------------------
 // Check Other process
 // ----------------------------------------------------------------------
 // PIDファイルがあるなら
@@ -692,7 +695,6 @@ if (!is_executable($BAN4NFTD_CONF['nft']))
     exit -1;
 }
 
-
 // -----------------------------
 // nftablesからBAN4NFTチェインを削除する
 // -----------------------------
@@ -732,6 +734,12 @@ system($BAN4NFTD_CONF['nft'].' add chain ip6 filter '.$BAN4NFTD_CONF['nft_chain'
 // ----------------------------------------------------------------------
 do // SIGHUPに対応したループ構造にしている
 {
+    // Init DataBase
+    // 2024.09.13 PostgreSQL/MySQLにも対応するために、データベースの初期化をBan4IPとは異なり、_init.php内からこちらに移動
+    // 2024.10.09 ログへの書き出しを考慮してここに移動
+    // データベースの初期化(接続や必要に応じてテーブル生成)を行う
+    ban4nft_dbinit();
+    
     // 再読み込み要求を初期化
     $BAN4NFTD_CONF['reload'] = 0;
     
@@ -951,10 +959,10 @@ do // SIGHUPに対応したループ構造にしている
                     $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: INFO [iss-list] Request ISS Ban List "."\n";
                     // ログに出力する
                     log_write($BAN4NFTD_CONF);
-                    // 情報共有サーバーのBANデータベースからBAN情報を取ってくる
-                    issbanlistget($BAN4NFTD_CONF);
                     // 情報共有サーバーからBAN情報を取得した最終日時を設定
                     $BAN4NFTD_CONF['iss_last_time'] = time();
+                    // 情報共有サーバーのBANデータベースからBAN情報を取ってくる
+                    issbanlistget($BAN4NFTD_CONF);
                 }
             }
         }
