@@ -37,7 +37,6 @@ cd ./ban4nft-main/
 
 chmod 700 ./ban4nftd
 chmod 700 ./ban4nftc
-chmod 755 ./init.d/ban4nft
 
 mkdir /etc/ban4nft/
 mkdir /var/lib/ban4nft/
@@ -75,7 +74,7 @@ target_protcol = 'tcp'                     ... BAN protcol. (tcp, udp, all)
 target_port = 80                           ... BAN port. (nnn or all)
 target_rule = 'DROP'                       ... BAN packet rule. (DROP, REJECT, LOG)
 
-target_str[] = '/error\] \[client (.*)\] client /'        ... (.) is target of BAN.
+target_str[] = '/error\] \[client (.*)\] client /'        ... (.*) is target of BAN.
     :
     :
 -------------------------------
@@ -104,6 +103,19 @@ ban4nftc list
 Other option...
 
 ban4nftc -h
+
+
+Step 3. Joining the Information Sharing Server (ISS)
+
+Let's Provide the IP address (or network) that Ban4IP/Ban4nft actually banned to the Information Sharing Server (ISS)!
+
+https://www.ban4nft.net/ (*Prepared as of 2024.09.30)
+
+You will register as a USERID with an email address, a password will be sent to that email address.
+Next, set “iss_flag” to “1” (=YES) in the configuration file and set ISS-related parameters as needed.
+If you BAN some IP address (or Network) one on the server, BAN information is immediately sent to ISS, 
+and BAN information provided by other users is imported every 3 minutes.
+By sharing BAN information with each other, everyone can be more proactive in their defense.
 
 Have a nice sleep! :-)
 
