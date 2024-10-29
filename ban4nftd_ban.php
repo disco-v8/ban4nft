@@ -193,17 +193,23 @@ function ban4nft_ban($TARGET_CONF)
                     system($TARGET_CONF['nft'].' add rule '.$IP_VER.' filter '.$TARGET_CONF['nft_chain'].' '.$IP_VER.' saddr '.$TARGET_CONF['target_address'].' '.strtolower($TARGET_CONF['target_rule']));
                     
                     // -----------------------------
-                    // 情報共有フラグがON(=1)なら、かつ情報共有サーバーからのデータでなければ
+                    // 情報共有フラグがあるなら
                     // -----------------------------
-                    if (isset($TARGET_CONF['iss_flag'])
+                    if (isset($TARGET_CONF['iss_flag']))
                     {
-                        if ($TARGET_CONF['iss_flag'] == 1 && $TARGET_CONF['target_service'] != 'iss-list')
+                        // 情報共有フラグがON(=1)、かつ情報共有サーバーからのデータなら
+                        if ($TARGET_CONF['iss_flag'] == 1 && $TARGET_CONF['target_service'] == 'iss-list')
+                        {
+                            // 通知メールはいちいち出さない
+                        }
+                        // そうではないなら
+                        else
                         {
                             // BANした旨をメールで通知
                             ban4nft_banmailsend($TARGET_CONF);
                         }
                     }
-                    // 情報共有フラグがON(=1)ではないなら
+                    // 情報共有フラグがないなら
                     else
                     {
                         // BANした旨をメールで通知
@@ -249,17 +255,23 @@ function ban4nft_ban($TARGET_CONF)
                     system($TARGET_CONF['nft'].' add rule '.$IP_VER.' filter '.$TARGET_CONF['nft_chain'].' '.$IP_VER.' saddr '.$TARGET_CONF['target_address'].' '.strtolower($TARGET_CONF['target_protcol']).' dport '.$TARGET_CONF['target_port'].' '.strtolower($TARGET_CONF['target_rule']));
                     
                     // -----------------------------
-                    // 情報共有フラグがON(=1)なら、かつ情報共有サーバーからのデータでなければ
+                    // 情報共有フラグがあるなら
                     // -----------------------------
-                    if (isset($TARGET_CONF['iss_flag'])
+                    if (isset($TARGET_CONF['iss_flag']))
                     {
-                        if ($TARGET_CONF['iss_flag'] == 1 && $TARGET_CONF['target_service'] != 'iss-list')
+                        // 情報共有フラグがON(=1)、かつ情報共有サーバーからのデータなら
+                        if ($TARGET_CONF['iss_flag'] == 1 && $TARGET_CONF['target_service'] == 'iss-list')
+                        {
+                            // 通知メールはいちいち出さない
+                        }
+                        // そうではないなら
+                        else
                         {
                             // BANした旨をメールで通知
                             ban4nft_banmailsend($TARGET_CONF);
                         }
                     }
-                    // 情報共有フラグがON(=1)ではないなら
+                    // 情報共有フラグがないなら
                     else
                     {
                         // BANした旨をメールで通知
