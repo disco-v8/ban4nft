@@ -52,7 +52,7 @@ function ban4nft_unban($TARGET_CONF)
         if ($TARGET_CONF['target_protcol'] == 'all' && $TARGET_CONF['target_port'] == 'all')
         {
             // -----------------------------
-            // ip6tablesに対象IPアドレスをBANするルールを設定する
+            // BANルールを設定する
             // -----------------------------
             // UNBANする前のコマンド(exec_befor_unban)が設定されていたら実行(UNBANする場合、すでにUNBAN済みでも実行)
             $TARGET_CONF = ban4nft_exec($TARGET_CONF, 'exec_befor_unban');
@@ -83,7 +83,7 @@ function ban4nft_unban($TARGET_CONF)
         else if (isset($TARGET_CONF['target_protcol']) && isset($TARGET_CONF['target_port']))
         {
             // -----------------------------
-            // ip6tablesに対象IPアドレスをBANするルールを設定する
+            // BANルールを設定する
             // -----------------------------
             // UNBANする前のコマンド(exec_befor_unban)が設定されていたら実行(UNBANする場合、すでにUNBAN済みでも実行)
             $TARGET_CONF = ban4nft_exec($TARGET_CONF, 'exec_befor_unban');
@@ -130,29 +130,10 @@ function ban4nft_unban($TARGET_CONF)
     // 削除できなかったら
     if ($RESULT === FALSE)
     {
-        // BANデータベースのデータソース名(DSN)の指定が「sqlite」なら
-        if (isset($TARGET_CONF['pdo_dsn_ban']) && preg_match('/^sqlite/', $TARGET_CONF['pdo_dsn_ban']))
-        {
-            // delete_err_countの宣言がなかったら
-            if (!isset($TARGET_CONF['delete_err_count']))
-            {
-                // 宣言をする
-                $TARGET_CONF['delete_err_count'] = 0;
-            }
-            $TARGET_CONF['delete_err_count'] += 1;
-            // もし検出回数以上になったら
-            if ($TARGET_CONF['delete_err_count'] >= $TARGET_CONF['maxretry'])
-            {
-                // エラーの旨メッセージを設定
-                $TARGET_CONF['log_msg'] .= date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: WARN [".$TARGET_CONF['target_service']."] Cannot Query the DB, ".$TARGET_CONF['target_address']." ... DB File DELETE & REBOOT!(3)"."\n";
-                // 親プロセスに送信…はしなくていい、unbanは親プロセスだから
-                //ban4nft_sendmsg($TARGET_CONF);
-                // ログに出力する(親プロセスにログを送信する代わりに)
-                log_write($TARGET_CONF);
-                // データベースファイルをリセット
-                ban4nft_dbreset();
-            }
-        }
+        // エラーの旨メッセージを設定
+        $TARGET_CONF['log_msg'] .= date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: WARN [".$TARGET_CONF['target_service']."] Cannot Query the DB, ".$TARGET_CONF['target_address']." ... DB File DELETE & REBOOT!(3)"."\n";
+        // ログに出力する(親プロセスにログを送信する代わりに)
+        log_write($TARGET_CONF);
     }
     // 戻る
     return $TARGET_CONF;
