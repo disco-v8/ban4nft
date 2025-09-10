@@ -934,10 +934,8 @@ do // SIGHUPに対応したループ構造にしている
                 if (isset($TARGET_CONF['pdo_dsn_ban']) && preg_match('/^sqlite/', $TARGET_CONF['pdo_dsn_ban']))
                 {
                     // WAL内のデータをDBに書き出し(こうしないとban4nftc listで確認したり、別プロセスでsqlite3ですぐに確認できない…が、負荷的にはWALにしている意味がないよなぁ…一応banの場合は発行時に、unbanはここですべてが終わった時に書き出し処理をする。count_dbはしない)
-////                    $SQL_STR = "PRAGMA wal_checkpoint;";
-////                    $BAN4NFTD_CONF['count_db']->exec($SQL_STR);
                     $SQL_STR = "PRAGMA wal_checkpoint;";
-                    $BAN4NFTD_CONF['ban_db']->exec($SQL_STR);
+                    $BAN4NFTD_CONF = ban4nft_db_exec($BAN4NFTD_CONF, 'ban_db', $SQL_STR);
                 }
             }
             // 情報共有フラグがON(=1)なら

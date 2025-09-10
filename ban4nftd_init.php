@@ -468,17 +468,18 @@ function ban4nft_dbinit_mysql_count_db($TARGET_CONF)
     }
     
     // テーブルがなかったら作成
-    $TARGET_CONF['count_db']->exec('CREATE TABLE IF NOT EXISTS count_tbl (address varchar(48), service varchar(128), registdate bigint)');
-    // インデックスがあっても無くても作成する
-    try
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'count_db', 'CREATE TABLE IF NOT EXISTS count_tbl (address varchar(48), service varchar(128), registdate bigint)');
+    // インデックスがあるかどうか確認する
+    $SQL_STR = "SELECT COUNT(*) AS idx_exists FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = 'count_db' AND TABLE_NAME   = 'count_tbl' AND INDEX_NAME   = 'count_idx'";
+    $RESULT = $TARGET_CONF['count_db']->query($SQL_STR);
+    // インデックスがあるなら
+    if ($RESULT !== false && $RESULT->rowCount() > 0)
     {
-        $TARGET_CONF['count_db']->exec('ALTER TABLE count_tbl ADD INDEX count_idx (address)');
+        // インデックスの作成はしないで、$TARGET_CONFを返す
+        return $TARGET_CONF;
     }
-    // 何からの理由でインデックスを作成できなかったら(失敗した場合、 PDOException を投げてくる)
-    catch(PDOException $e)
-    {
-        // …が、特に気にしない(性能は落ちるかもしれないけど)
-    }
+    // インデックスが無いなら作成する
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'count_db', 'ALTER TABLE count_tbl ADD INDEX count_idx (address)');
     
     // すべて正常終了なら、$TARGET_CONFを返す
     return $TARGET_CONF;
@@ -516,17 +517,18 @@ function ban4nft_dbinit_mysql_ban_db($TARGET_CONF)
     }
     
     // テーブルがなかったら作成
-    $TARGET_CONF['ban_db']->exec('CREATE TABLE IF NOT EXISTS ban_tbl (address varchar(48), service varchar(128), protcol varchar(88), port varchar(8), rule varchar(8), unbandate bigint)');
-    // インデックスがあっても無くても作成する
-    try
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'ban_db', 'CREATE TABLE IF NOT EXISTS ban_tbl (address varchar(48), service varchar(128), protcol varchar(88), port varchar(8), rule varchar(8), unbandate bigint)');
+    // インデックスがあるかどうか確認する
+    $SQL_STR = "SELECT COUNT(*) AS idx_exists FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = 'ban_db' AND TABLE_NAME   = 'ban_tbl' AND INDEX_NAME   = 'ban_idx'";
+    $RESULT = $TARGET_CONF['ban_db']->query($SQL_STR);
+    // インデックスがあるなら
+    if ($RESULT !== false && $RESULT->rowCount() > 0)
     {
-        $TARGET_CONF['ban_db']->exec('ALTER TABLE ban_tbl ADD INDEX ban_idx (address)');
+        // インデックスの作成はしないで、$TARGET_CONFを返す
+        return $TARGET_CONF;
     }
-    // 何からの理由でインデックスを作成できなかったら(失敗した場合、 PDOException を投げてくる)
-    catch(PDOException $e)
-    {
-        // …が、特に気にしない(性能は落ちるかもしれないけど)
-    }
+    // インデックスが無いなら作成する
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'ban_db', 'ALTER TABLE ban_tbl ADD INDEX ban_idx (address)');
     
     // すべて正常終了なら、$TARGET_CONFを返す
     return $TARGET_CONF;
@@ -564,17 +566,18 @@ function ban4nft_dbinit_mysql_mailrate_db($TARGET_CONF)
     }
     
     // テーブルがなかったら作成
-    $TARGET_CONF['mailrate_db']->exec('CREATE TABLE IF NOT EXISTS mailrate_tbl (to_address varchar(128), title varchar(128), registdate bigint, UNIQUE (to_address, title) )');
-    // インデックスがあっても無くても作成する
-    try
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'mailrate_db', 'CREATE TABLE IF NOT EXISTS mailrate_tbl (to_address varchar(128), title varchar(128), registdate bigint, UNIQUE (to_address, title) )');
+    // インデックスがあるかどうか確認する
+    $SQL_STR = "SELECT COUNT(*) AS idx_exists FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = 'mailrate_db' AND TABLE_NAME   = 'mailrate_tbl' AND INDEX_NAME   = 'mailrate_idx'";
+    $RESULT = $TARGET_CONF['mailrate_db']->query($SQL_STR);
+    // インデックスがあるなら
+    if ($RESULT !== false && $RESULT->rowCount() > 0)
     {
-        $TARGET_CONF['mailrate_db']->exec('ALTER TABLE mailrate_tbl ADD INDEX mailrate_idx (to_address, title)');
+        // インデックスの作成はしないで、$TARGET_CONFを返す
+        return $TARGET_CONF;
     }
-    // 何からの理由でインデックスを作成できなかったら(失敗した場合、 PDOException を投げてくる)
-    catch(PDOException $e)
-    {
-        // …が、特に気にしない(性能は落ちるかもしれないけど)
-    }
+    // インデックスが無いなら作成する
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'mailrate_db', 'ALTER TABLE mailrate_tbl ADD INDEX mailrate_idx (to_address, title)');
     
     // すべて正常終了なら、$TARGET_CONFを返す
     return $TARGET_CONF;
