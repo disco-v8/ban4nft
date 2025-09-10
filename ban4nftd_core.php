@@ -523,23 +523,13 @@ function ban4nft_mail_send()
     
     // メール送信レートテーブルから、対象メッセージの現在時刻 - 対象時間より昔のデータを削除
     $SQL_STR = "DELETE FROM mailrate_tbl WHERE registdate < (".(time() - $TARGET_CONF['mailratetime']).");";
-    try {
-        $RESULT = $TARGET_CONF['mailrate_db']->exec($SQL_STR);
-    }
-    catch (PDOException $PDO_E) {
-        // エラーの旨メッセージを設定
-        $TARGET_CONF['log_msg'] .= date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: WARN PDOException:".$PDO_E->getMessage()." on ".__FILE__.":".__LINE__."\n";
-    }
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'mailrate_db', $SQL_STR);
+
     // メール送信レートテーブルに対象メッセージを登録
     $SQL_STR = "INSERT INTO mailrate_tbl VALUES ('".$MAIL_TO."','".$MAIL_TITLE."',".time().");";
-    try {
-        $RESULT = $TARGET_CONF['mailrate_db']->exec($SQL_STR);
-    }
-    catch (PDOException $PDO_E) {
-        // エラーの旨メッセージを設定
-        $TARGET_CONF['log_msg'] .= date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: WARN PDOException:".$PDO_E->getMessage()." on ".__FILE__.":".__LINE__."\n";
-        $RESULT = 0;
-    }
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'mailrate_db', $SQL_STR);
+    // 登録できた件数を取得
+    $RESULT = $TARGET_CONF['exec_result'];
     
     // もし新しく登録できたら
     if ($RESULT != 0)
@@ -908,21 +898,14 @@ do // SIGHUPに対応したループ構造にしている
                 }
             }
             
+            // 2025.09.09 T.Kabu 結局ここを含めて、exec()とquery()をラッピングすることにした
+            // 2025.09.09 T.Kabu PDO経由でMySQLやPostgreSQLと接続していると、何らかの理由で勝手に切断されていることがあり、この後のtry/catchで「General error: 2006 MySQL server has gone away」エラーとなることがある
             // 2021.09.07 T.Kabu どうもSQLite3が、DELETEの時にだけ何かのタイミングでデータベースがロックしているという判断でエラーとなる。実際にはDELETE出来ているので再試行も発生しないので、try/catchでスルーするようにした
-            try {
-                // カウントデータベースから最大カウント時間を過ぎたデータをすべて削除(いわゆる削除漏れのゴミ掃除)
-                $SQL_STR = "DELETE FROM count_tbl WHERE registdate < ".$BAN4NFTD_CONF['maxfindtime'].";";
-                $BAN4NFTD_CONF['count_db']->exec($SQL_STR);
-            }
-            catch (PDOException $PDO_E) {
-                // エラーの旨メッセージを設定
-                $BAN4NFTD_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: WARN PDOException:".$PDO_E->getMessage()." on ".__FILE__.":".__LINE__."\n";
-                // ログに出力する
-                log_write($BAN4NFTD_CONF);
-            }
+            // カウントデータベースから最大カウント時間を過ぎたデータをすべて削除(いわゆる削除漏れのゴミ掃除)
+            $SQL_STR = "DELETE FROM count_tbl WHERE registdate < ".$BAN4NFTD_CONF['maxfindtime'].";";
+            $BAN4NFTD_CONF = ban4nft_db_exec($BAN4NFTD_CONF, 'count_db', $SQL_STR);
             
             // BANデータベースでBAN解除対象IPアドレスを取得(UNIXタイム)
-////            $SQL_STR = "SELECT * FROM ban_tbl WHERE unbandate < ".local_time().";";
             $SQL_STR = "SELECT * FROM ban_tbl WHERE unbandate < ".time().";";
             $RESULT = $BAN4NFTD_CONF['ban_db']->query($SQL_STR);
             // BAN解除対象IPアドレスの取得ができなかったら

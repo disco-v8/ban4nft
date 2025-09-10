@@ -236,7 +236,7 @@ function ban4nft_ban($TARGET_CONF)
                     // WAL内のデータをDBに書き出し(こうしないとban4nftc listで確認したり、別プロセスでsqlite3ですぐに確認できない…が、負荷的にはWALにしている意味がないよなぁ…)
                     $SQL_STR .= "PRAGMA wal_checkpoint;";
                 }
-                $TARGET_CONF['ban_db']->exec($SQL_STR);
+                $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'ban_db', $SQL_STR);
             }
             // 対象サービスについてBANのプロトコルとポートが個別に設定されているなら
             else if (isset($TARGET_CONF['target_protcol']) && isset($TARGET_CONF['target_port']))
@@ -298,7 +298,7 @@ function ban4nft_ban($TARGET_CONF)
                     // WAL内のデータをDBに書き出し(こうしないとban4nftc listで確認したり、別プロセスでsqlite3ですぐに確認できない…が、負荷的にはWALにしている意味がないよなぁ…)
                     $SQL_STR .= "PRAGMA wal_checkpoint;";
                 }
-                $TARGET_CONF['ban_db']->exec($SQL_STR);
+                $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'ban_db', $SQL_STR);
             }
             // ないなら(対象IPアドレスがBANの対象である旨のみ出力)
             else

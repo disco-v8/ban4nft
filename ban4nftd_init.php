@@ -99,6 +99,47 @@ function log_write($BAN4NFTD_CONF)
 // ----------------------------------------------------------------------
 // Sub Routine
 // ----------------------------------------------------------------------
+function ban4nft_db_exec($TARGET_CONF, $TARGET_DB, $SQL_STR)
+{
+    // データベースへの再接続中なら即戻る
+    if (isset($TARGET_CONF['db_reconnect_flag']) && $TARGET_CONF['db_reconnect_flag'] == 1)
+    {
+        return $TARGET_CONF;
+    }
+    
+    // 結果をfalseで初期化
+    $RESULT = false;
+    for ($RETRY_COUNT = 0; $RETRY_COUNT < 3; $RETRY_COUNT ++)
+    {
+        // 2025.09.10 T.Kabu PDO経由でMySQLやPostgreSQLと接続していると、何らかの理由で勝手に切断されていることがあり、この後のtry/catchで「General error: 2006 MySQL server has gone away」エラーとなることがある。
+        try {
+            $RESULT = $TARGET_CONF[$TARGET_DB]->exec($SQL_STR);
+        }
+        catch (PDOException $PDO_E) {
+            // エラーの旨メッセージを設定
+            $TARGET_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: WARN PDOException:".$PDO_E->getMessage()." on ".__FILE__.":".__LINE__."\n";
+            // ログに出力する
+            log_write($TARGET_CONF);
+            // 再接続フラグON
+            $TARGET_CONF['db_reconnect_flag'] = 1;
+            // 親プロセスのデータベースを再接続
+            $TARGET_CONF = ban4nft_dbinit($TARGET_CONF);
+            // 再接続フラグOFF
+            unset($TARGET_CONF['db_reconnect_flag']);
+            // リトライ
+            continue;
+        }
+        break;
+    }
+    // 結果を返す
+    $TARGET_CONF['exec_result'] = $RESULT;
+    return $TARGET_CONF;
+}
+?>
+<?php
+// ----------------------------------------------------------------------
+// Sub Routine
+// ----------------------------------------------------------------------
 function ban4nft_dbinit_sqlite3_count_db($TARGET_CONF)
 {
     // 2025.09.05 いつの間にかDBの初期化を親プロセスのみでするようになっていて処理構造がおかしくなっていたのでdbinitを見直し
@@ -139,17 +180,17 @@ function ban4nft_dbinit_sqlite3_count_db($TARGET_CONF)
     }
     
     // テーブルがなかったら作成
-    $TARGET_CONF['count_db']->exec('CREATE TABLE IF NOT EXISTS count_tbl (address, service, registdate)');
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'count_db', 'CREATE TABLE IF NOT EXISTS count_tbl (address, service, registdate)');
     // インデックスを作成する
-    $TARGET_CONF['count_db']->exec('CREATE INDEX IF NOT EXISTS count_idx ON count_tbl (address)');
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'count_db', 'CREATE INDEX IF NOT EXISTS count_idx ON count_tbl (address)');
     
     // journal_modeをWALにする
-    $TARGET_CONF['count_db']->exec('PRAGMA journal_mode=WAL');
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'count_db', 'PRAGMA journal_mode=WAL');
     // synchronousをNORMALにする
-    $TARGET_CONF['count_db']->exec('PRAGMA synchronous=NORMAL');
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'count_db', 'PRAGMA synchronous=NORMAL');
     
     // カウントデータベースのロックタイムアウト時間を少し長くする
-    $TARGET_CONF['count_db']->exec('PRAGMA busy_timeout='.$TARGET_CONF['db_timeout']);
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'count_db', 'PRAGMA busy_timeout='.$TARGET_CONF['db_timeout']);
     
     // すべて正常終了なら、$TARGET_CONFを返す
     return $TARGET_CONF;
@@ -199,17 +240,17 @@ function ban4nft_dbinit_sqlite3_ban_db($TARGET_CONF)
     }
     
     // テーブルがなかったら作成
-    $TARGET_CONF['ban_db']->exec('CREATE TABLE IF NOT EXISTS ban_tbl (address, service, protcol, port, rule, unbandate)');
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'ban_db', 'CREATE TABLE IF NOT EXISTS ban_tbl (address, service, protcol, port, rule, unbandate)');
     // インデックスを作成する
-    $TARGET_CONF['ban_db']->exec('CREATE INDEX IF NOT EXISTS ban_idx ON ban_tbl (address)');
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'ban_db', 'CREATE INDEX IF NOT EXISTS ban_idx ON ban_tbl (address)');
     
     // journal_modeをWALにする
-    $TARGET_CONF['ban_db']->exec('PRAGMA journal_mode=WAL');
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'ban_db', 'PRAGMA journal_mode=WAL');
     // synchronousをNORMALにする
-    $TARGET_CONF['ban_db']->exec('PRAGMA synchronous=NORMAL');
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'ban_db', 'PRAGMA synchronous=NORMAL');
     
     // BANデータベースのロックタイムアウト時間を少し長くする
-    $TARGET_CONF['ban_db']->exec('PRAGMA busy_timeout='.$TARGET_CONF['db_timeout']);
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'ban_db', 'PRAGMA busy_timeout='.$TARGET_CONF['db_timeout']);
     
     // すべて正常終了なら、$TARGET_CONFを返す
     return $TARGET_CONF;
@@ -259,17 +300,17 @@ function ban4nft_dbinit_sqlite3_mailrate_db($TARGET_CONF)
     }
     
     // テーブルがなかったら作成
-    $TARGET_CONF['mailrate_db']->exec('CREATE TABLE IF NOT EXISTS mailrate_tbl (to_address, title, registdate, UNIQUE (to_address, title) )');
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'mailrate_db', 'CREATE TABLE IF NOT EXISTS mailrate_tbl (to_address, title, registdate, UNIQUE (to_address, title) )');
     // インデックスを作成する
-    $TARGET_CONF['mailrate_db']->exec('CREATE INDEX IF NOT EXISTS mailrate_idx ON mailrate_tbl (to_address, title)');
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'mailrate_db', 'CREATE INDEX IF NOT EXISTS mailrate_idx ON mailrate_tbl (to_address, title)');
     
     // journal_modeをWALにする
-    $TARGET_CONF['mailrate_db']->exec('PRAGMA journal_mode=WAL');
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'mailrate_db', 'PRAGMA journal_mode=WAL');
     // synchronousをNORMALにする
-    $TARGET_CONF['mailrate_db']->exec('PRAGMA synchronous=NORMAL');
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'mailrate_db', 'PRAGMA synchronous=NORMAL');
     
     // メール送信レートテーブルデータベースのロックタイムアウト時間を少し長くする
-    $TARGET_CONF['mailrate_db']->exec('PRAGMA busy_timeout='.$TARGET_CONF['db_timeout']);
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'mailrate_db', 'PRAGMA busy_timeout='.$TARGET_CONF['db_timeout']);
     
     // すべて正常終了なら、$TARGET_CONFを返す
     return $TARGET_CONF;
@@ -307,9 +348,9 @@ function ban4nft_dbinit_pgsql_count_db($TARGET_CONF)
     }
     
     // テーブルがなかったら作成
-    $TARGET_CONF['count_db']->exec('CREATE TABLE IF NOT EXISTS count_tbl (address varchar(48), service varchar(128), registdate bigint)');
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'count_db', 'CREATE TABLE IF NOT EXISTS count_tbl (address varchar(48), service varchar(128), registdate bigint)');
     // インデックスを作成する
-    $TARGET_CONF['count_db']->exec('CREATE INDEX IF NOT EXISTS count_idx ON count_tbl (address)');
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'count_db', 'CREATE INDEX IF NOT EXISTS count_idx ON count_tbl (address)');
     
     // すべて正常終了なら、$TARGET_CONFを返す
     return $TARGET_CONF;
@@ -347,9 +388,9 @@ function ban4nft_dbinit_pgsql_ban_db($TARGET_CONF)
     }
     
     // テーブルがなかったら作成
-    $TARGET_CONF['ban_db']->exec('CREATE TABLE IF NOT EXISTS ban_tbl (address varchar(48), service varchar(128), protcol varchar(88), port varchar(8), rule varchar(8), unbandate bigint)');
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'ban_db', 'CREATE TABLE IF NOT EXISTS ban_tbl (address varchar(48), service varchar(128), protcol varchar(88), port varchar(8), rule varchar(8), unbandate bigint)');
     // インデックスを作成する
-    $TARGET_CONF['ban_db']->exec('CREATE INDEX IF NOT EXISTS ban_idx ON ban_tbl (address)');
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'ban_db', 'CREATE INDEX IF NOT EXISTS ban_idx ON ban_tbl (address)');
     
     // すべて正常終了なら、$TARGET_CONFを返す
     return $TARGET_CONF;
@@ -387,9 +428,9 @@ function ban4nft_dbinit_pgsql_mailrate_db($TARGET_CONF)
     }
     
     // テーブルがなかったら作成
-    $TARGET_CONF['mailrate_db']->exec('CREATE TABLE IF NOT EXISTS mailrate_tbl (to_address varchar(128), title varchar(128), registdate bigint, UNIQUE (to_address, title) )');
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'mailrate_db', 'CREATE TABLE IF NOT EXISTS mailrate_tbl (to_address varchar(128), title varchar(128), registdate bigint, UNIQUE (to_address, title) )');
     // インデックスを作成する
-    $TARGET_CONF['mailrate_db']->exec('CREATE INDEX IF NOT EXISTS mailrate_idx ON mailrate_tbl (to_address, title)');
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'mailrate_db', 'CREATE INDEX IF NOT EXISTS mailrate_idx ON mailrate_tbl (to_address, title)');
     
     // すべて正常終了なら、$TARGET_CONFを返す
     return $TARGET_CONF;
@@ -630,7 +671,7 @@ function ban4nft_dbinit($TARGET_CONF)
     {
         // BANデータベースの初期化処理
         // 2025.09.05 いつの間にかDBの初期化を親プロセスのみでするようになっていて処理構造がおかしくなっていたのでdbinitを見直し
-        $TARGET_CONF = ban4nft_dbinit_sqlite3_ban_db$TARGET_CONF();
+        $TARGET_CONF = ban4nft_dbinit_sqlite3_ban_db($TARGET_CONF);
     }
     // BANデータベースのデータソース名(DSN)の指定が上記以外なら
     else

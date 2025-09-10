@@ -32,15 +32,11 @@ function ban4nft_unban($TARGET_CONF)
         // 対象IPアドレスはBANの対象だけど、アドレスがおかしい旨のメッセージを設定
         $TARGET_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: NOTICE [".$TARGET_CONF['target_service']."] Ban ".$TARGET_CONF['target_address']." (over ".$TARGET_CONF['maxretry']." counts) ";
         $TARGET_CONF['log_msg'] .= 'Illegal address!?'."\n";
+        // 2025.09.10 T.Kabu 結局ここを含めて、exec()とquery()をラッピングすることにした
+        // 2025.09.10 T.Kabu PDO経由でMySQLやPostgreSQLと接続していると、何らかの理由で勝手に切断されていることがあり、この後のtry/catchで「General error: 2006 MySQL server has gone away」エラーとなることがある
         // 2021.09.07 T.Kabu どうもSQLite3が、DELETEの時にだけ何かのタイミングでデータベースがロックしているという判断でエラーとなる。実際にはDELETE出来ているので再試行も発生しないので、try/catchでスルーするようにした
-        try {
-            // BANデータベースから対象IPアドレス(とポートとルールが合致するもの)を削除
-            $TARGET_CONF['ban_db']->exec("DELETE FROM ban_tbl WHERE address = '".$TARGET_CONF['target_address']."' AND protcol = '".$TARGET_CONF['target_protcol']."' AND port = '".$TARGET_CONF['target_port']."' AND rule = '".$TARGET_CONF['target_rule']."'");
-        }
-        catch (PDOException $PDO_E) {
-            // エラーの旨メッセージを設定
-            $TARGET_CONF['log_msg'] .= date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: WARN PDOException:".$PDO_E->getMessage()." on ".__FILE__.":".__LINE__."\n";
-        }
+        // BANデータベースから対象IPアドレス(とポートとルールが合致するもの)を削除
+        $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'ban_db', "DELETE FROM ban_tbl WHERE address = '".$TARGET_CONF['target_address']."' AND protcol = '".$TARGET_CONF['target_protcol']."' AND port = '".$TARGET_CONF['target_port']."' AND rule = '".$TARGET_CONF['target_rule']."'");
         // 戻る
         return $TARGET_CONF;
     }
@@ -116,17 +112,12 @@ function ban4nft_unban($TARGET_CONF)
             $TARGET_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: NOTICE [".$TARGET_CONF['target_service']."] Unban? ".$TARGET_CONF['target_address']."\n";
         }
     }
+    // 2025.09.10 T.Kabu 結局ここを含めて、exec()とquery()をラッピングすることにした
+    // 2025.09.10 T.Kabu PDO経由でMySQLやPostgreSQLと接続していると、何らかの理由で勝手に切断されていることがあり、この後のtry/catchで「General error: 2006 MySQL server has gone away」エラーとなることがある
     // 2021.09.07 T.Kabu どうもSQLite3が、DELETEの時にだけ何かのタイミングでデータベースがロックしているという判断でエラーとなる。実際にはDELETE出来ているので再試行も発生しないので、try/catchでスルーするようにした
-    try {
-        // BANデータベースから対象IPアドレス(とポートとルールが合致するもの)を削除
-        $RESULT = $TARGET_CONF['ban_db']->exec("DELETE FROM ban_tbl WHERE address = '".$TARGET_CONF['target_address']."' AND protcol = '".$TARGET_CONF['target_protcol']."' AND port = '".$TARGET_CONF['target_port']."' AND rule = '".$TARGET_CONF['target_rule']."'");
-    }
-    catch (PDOException $PDO_E) {
-        // エラーの旨メッセージを設定
-        $TARGET_CONF['log_msg'] .= date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: WARN PDOException:".$PDO_E->getMessage()." on ".__FILE__.":".__LINE__."\n";
-        // TRUEにしていたが、エラーだったらFALSEにしてDBのリセット判定をするように処理の流れを変更 2025.03.05 T.Kabu
-        $RESULT = FALSE;
-    }
+    // BANデータベースから対象IPアドレス(とポートとルールが合致するもの)を削除
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'ban_db', "DELETE FROM ban_tbl WHERE address = '".$TARGET_CONF['target_address']."' AND protcol = '".$TARGET_CONF['target_protcol']."' AND port = '".$TARGET_CONF['target_port']."' AND rule = '".$TARGET_CONF['target_rule']."'");
+    $RESULT = $TARGET_CONF['exec_result'];
     // 削除できなかったら
     if ($RESULT === FALSE)
     {
