@@ -122,9 +122,10 @@ function ban4nft_mail_send()
     }
     
     // メール送信レートテーブルから、対象メッセージの現在時刻 - 対象時間より昔のデータを削除
-    @$TARGET_CONF['mailrate_db']->exec("DELETE FROM mailrate_tbl WHERE registdate < (".(time() - $TARGET_CONF['mailratetime']).")");
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'mailrate_db', "DELETE FROM mailrate_tbl WHERE registdate < (".(time() - $TARGET_CONF['mailratetime']).")");
     // メール送信レートテーブルに対象メッセージを登録
-    $RESULT = @$TARGET_CONF['mailrate_db']->exec("INSERT INTO mailrate_tbl VALUES ('".$MAIL_TO."','".$MAIL_TITLE."',".time().")");
+    $TARGET_CONF = ban4nft_db_exec($TARGET_CONF, 'mailrate_db', "INSERT INTO mailrate_tbl VALUES ('".$MAIL_TO."','".$MAIL_TITLE."',".time().")");
+    $RESULT = $TARGET_CONF['exec_result'];
     
     // もし新しく登録できたら
     if ($RESULT)

@@ -116,6 +116,12 @@ function ban4nft_db_exec($TARGET_CONF, $TARGET_DB, $SQL_STR)
             $RESULT = $TARGET_CONF[$TARGET_DB]->exec($SQL_STR);
         }
         catch (PDOException $PDO_E) {
+            // 整合性制約違反(SQLSTATE 23xxx)は接続エラーではない(mailrate_tblのUNIQUE制約による重複送信抑止など)ので、0件として扱い再接続/リトライしない
+            if (strncmp((string)$PDO_E->getCode(), '23', 2) == 0)
+            {
+                $RESULT = 0;
+                break;
+            }
             // エラーの旨メッセージを設定
             $TARGET_CONF['log_msg'] = date("Y-m-d H:i:s", local_time())." ban4nft[".getmypid()."]: WARN PDOException:".$PDO_E->getMessage()." on ".__FILE__.":".__LINE__."\n";
             // ログに出力する
