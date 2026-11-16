@@ -686,6 +686,31 @@ if (!is_executable($BAN4NFTD_CONF['nft']))
 }
 
 // -----------------------------
+// nftablesにfilterテーブルがなければ新設する ... RHELがテーブルをデフォルトで用意しなくなったので
+// -----------------------------
+system($BAN4NFTD_CONF['nft'].' list table ip filter > /dev/null 2>&1', $RESULT);
+if ($RESULT != 0)
+{
+    system($BAN4NFTD_CONF['nft'].' add table ip filter', $RESULT);
+    if ($RESULT != 0)
+    {
+        fprintf(STDERR, "Cannot create nft table ip filter!?\n");
+        exit -1;
+    }    
+}
+
+system($BAN4NFTD_CONF['nft'].' list table ip6 filter > /dev/null 2>&1', $RESULT);
+if ($RESULT != 0)
+{
+    system($BAN4NFTD_CONF['nft'].' add table ip6 filter', $RESULT);
+    if ($RESULT != 0)
+    {
+        fprintf(STDERR, "Cannot create nft table ip6 filter!?\n");
+        exit -1;
+    }
+}
+
+// -----------------------------
 // nftablesからBAN4NFTチェインを削除する
 // -----------------------------
 // IPv4でnftablesに設定されているチェインの設定を取得する
@@ -709,7 +734,6 @@ if (psearch($PROC_P, $TARGET_PATTERN) == TRUE)
     system($BAN4NFTD_CONF['nft'].' delete chain ip6 filter '.$BAN4NFTD_CONF['nft_chain'].' > /dev/null');
 }
 pclose($PROC_P);
-
 
 // -----------------------------
 // nftablesにBAN4NFTチェインを新設する
